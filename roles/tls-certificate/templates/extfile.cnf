@@ -1,0 +1,2 @@
+extendedKeyUsage = clientAuth,serverAuth
+subjectAltName = DNS:{{ tls_hostname }},IP:{{ private_ip | default(ansible_host) }},IP:127.0.0.1

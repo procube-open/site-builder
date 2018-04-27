@@ -1,0 +1,13 @@
+---
+tls_hostname: "{{ arg_tls_hostname | default(inventory_hostname) }}"
+target_CN: "{{ tls_hostname | default(inventory_hostname) }}"
+target_C: "{{ ca_C }}"
+target_EMail: "{{ ca_EMail }}"
+target_L: "{{ ca_L }}"
+target_O: "{{ ca_O }}"
+target_OU: "{{ ca_OU }}"
+target_ST: "{{ ca_ST }}"
+target_FQDN: "{{ inventory_hostname }}"
+target_IP: "{{ private_ip | default(ansible_host) }}"
+target_valid_in: "{{ 365*100 }}"
+target_key_usage: "serverAuth,clientAuth"

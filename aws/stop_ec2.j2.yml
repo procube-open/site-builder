@@ -1,0 +1,15 @@
+- name: set state to ec2 instances
+  hosts: localhost
+  connection: local
+  tasks:
+{% raw %}
+  - name: "Change state of instance to {{ target_state | default('stopped') }}"
+    ec2:
+      state: "{{ target_state | default('stopped')}}"
+{% endraw %}
+      region: ap-northeast-1
+      wait: yes
+      instance_ids:
+{% for result in ec2.results %}
+        - {{ result.tagged_instances[0].id }}
+{% endfor %}

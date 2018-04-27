@@ -1,0 +1,15 @@
+- name: build mother VM
+  hosts: mother
+  become: True
+  vars_files:
+    - ../config/vars/main.yml
+
+  roles:
+    - base
+    - iptables
+    - vagrant
+    - ntp-client
+    - pip-venv
+    - ansible
+    - aws
+    - reboot

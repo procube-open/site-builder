@@ -1,0 +1,33 @@
+require 'yaml'
+
+Vagrant.configure("2") do |config|
+  vars = YAML.load_file '../../vagrant.yml'
+  ENV['ANSIBLE_ROLES_PATH'] = "../../config/roles:../roles"
+  config.vm.box = "centos/7"
+  config.vm.define "mother" do |mother|
+    mother.vm.provider "virtualbox" do |v|
+      v.name = "mother"
+    end
+    mother.vm.network "private_network", ip: "#{vars['mother_ip']}", netmask: "#{vars['mother_netmask']}"
+    mother.vm.hostname = "mother"
+    mother.vm.synced_folder "../..", "/vagrant", type: "#{vars['sync_type']}"
+    mother.vm.provision "ansible" do |ansible|
+      ansible.raw_arguments  = ["--skip-tags", "reboot"]
+      ansible.playbook = "../mother.yml"
+      ansible.extra_vars = {
+        administrator: "vagrant",
+        site_root: "/vagrant",
+        private_ip: "#{vars['mother_ip']}"
+      }
+    end
+    # reboot by reboot command in the host cause unmount /vagrant nfs
+    # so, we use vagrant-reload plugin
+    mother.vm.provision :reload
+    # mother.vm.provision "shell", privileged: false, inline: <<-SHELL
+    #   shopt -s expand_aliases
+    #   source ~/.bashrc
+    #   buildAws
+    #   buildHosts
+    # SHELL
+  end
+end

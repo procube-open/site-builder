@@ -1,0 +1,84 @@
+---
+# common utiility packages.
+
+- name: install packages
+  yum: >
+    name={{ item }}
+    state=present
+  with_items:
+    - bridge-utils
+    - wget
+    - vim
+    - unzip
+    - telnet
+    - sysstat
+    - strace
+    - tcpdump
+- name: disable selinux
+  selinux: >
+    state=disabled
+  notify: require reboot
+- name: enable services
+  service: "name={{ item }} enabled=yes"
+  with_items:
+    - sysstat
+  notify: require reboot
+- name: set host name
+  hostname:
+    name: "{{ inventory_hostname }}"
+- name: "gather if aws or not"
+  stat: path=/etc/cloud/cloud.cfg
+  register: cloud_cfg
+- name: preserve hostname setting for ec2
+  lineinfile:
+    line: "preserve_hostname: true"
+    path: /etc/cloud/cloud.cfg
+    state: present
+  when: cloud_cfg.stat.exists
+- name: "set timezone"
+  timezone:
+    name: "{{ timezone }}"
+  when: timezone is defined
+- name: "gather available locales"
+  shell: localectl list-locales
+  register: locales
+  changed_when: False
+- name: "set locale"
+  shell: "localedef -f UTF-8 -i {{ locale }} {{ locale }}"
+  when: locale is defined and not (locale in locales.stdout_lines)
+# setting up sshd parameters
+- name: disable Password Authentication for sshd
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^PasswordAuthentication"
+    insertafter: "^#PasswordAuthentication"
+    line: "PasswordAuthentication no"
+- name: disable Challenge Response Authentication for sshd
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^ChallengeResponseAuthentication"
+    insertafter: "^#ChallengeResponseAuthentication"
+    line: "ChallengeResponseAuthentication no"
+- name: prohibit login as root for sshd
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^PermitRootLogin"
+    insertafter: "^#PermitRootLogin"
+    line: "PermitRootLogin no"
+- name: "Allow {{administrator}} to have passwordless sudo"
+  template:
+    src: sudoer.j2
+    dest: "/etc/sudoers.d/{{administrator}}"
+- name: gather ssh host keys
+  shell: cat /etc/ssh/ssh_host_ecdsa_key.pub
+  changed_when: False
+  register: ssh_host_key
+- name: set known host
+  become: False
+  blockinfile:
+    block: "{{ hostvars[item].inventory_hostname }},{{ hostvars[item].private_ip }} {{ hostvars[item].ssh_host_key.stdout }}"
+    dest: ".ssh/known_hosts"
+    mode: 0600
+    create: True
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item }}"
+  with_items: "{{ play_hosts }}"

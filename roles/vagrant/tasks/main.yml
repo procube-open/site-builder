@@ -1,0 +1,21 @@
+---
+- name: setup self private_key
+  become: false
+  copy:
+    src: vagrant/.vagrant/machines/mother/virtualbox/private_key
+    dest: ~/.ssh/id_vagrant
+    mode: 0600
+- name: set .ssh/config
+  become: false
+  blockinfile:
+    dest: "~/.ssh/config"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK vagrant {{ inventory_hostname }}"
+    insertafter: BOF
+    state: present
+    create: yes
+    mode: 0644
+    block: |
+      Host {{ inventory_hostname }}
+        User vagrant
+        IdentityFile ~/.ssh/id_vagrant
+        StrictHostKeyChecking no

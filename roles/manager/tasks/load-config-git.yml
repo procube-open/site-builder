@@ -1,0 +1,45 @@
+---
+- name: install git
+  become: True
+  yum: name=git
+
+- name: "install knownhosts for git ssh"
+  blockinfile:
+    block: "{{ git.host }}"
+    dest: ".ssh/known_hosts"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK git ssh server"
+    mode: 0600
+    create: True
+
+- name: "install private key for git"
+  copy:
+    content: "{{ (lookup('template', '../credentials.yml') | from_yaml).git_id_rsa }}"
+    dest: ".ssh/git_id_rsa"
+    mode: 0600
+
+- name: set .ssh/config for git
+  become: false
+  blockinfile:
+    dest: "~/.ssh/config"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK git {{ git.fqdn }}"
+    insertafter: BOF
+    state: present
+    create: yes
+    mode: 0644
+    block: |
+      Host {{ git.fqdn }}
+        User {{ git.user }}
+        IdentityFile ~/.ssh/git_id_rsa
+        StrictHostKeyChecking no
+
+- name: "put .gitconfig"
+  template:
+    src: gitconfig
+    dest: .gitconfig
+    mode: 0644
+
+- name: load site configuration
+  git:
+    dest: "./config"
+    repo: "{{ git.user }}@{{ git.fqdn }}:{{ git.path }}"
+    version: "{{ git.version }}"

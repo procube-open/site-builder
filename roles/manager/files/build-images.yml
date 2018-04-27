@@ -1,0 +1,56 @@
+---
+- name: build images
+  gather_facts: False
+  hosts: images
+  vars_files:
+    - ../config/vars/main.yml
+
+  tasks:
+  - name: Log into private registry
+    delegate_to: localhost
+    connection: local
+    run_once: True
+    docker_login:
+      registry: "{{ registry }}"
+      username: "{{ docker_user }}"
+      password: "{{ lookup('file', '../registry/registry_password') }}"
+      email: "{{ docker_login_email }}"
+
+  - name: set connection property for images
+    delegate_to: localhost
+    connection: local
+    set_fact:
+      ansible_connection: docker
+      image_tag: "{{registry}}/{{project_name}}/{{ inventory_hostname }}:1"
+
+  - name: invoke container
+    delegate_to: localhost
+    connection: local
+    docker_container:
+      image: "{{ from }}"
+      name: "{{ inventory_hostname }}"
+      hostname: "{{ inventory_hostname }}"
+      env: "{{ env | default(omit) }}"
+      privileged: "{{ privileged | default(omit) }}"
+      volumes: "{{ volumes | default(omit) }}"
+
+  - name: play book
+    include_role:
+      name: "{{ role }}"
+    with_items: "{{ roles | default([]) }}"
+    loop_control:
+      loop_var: role
+
+  - name: commit image
+    delegate_to: localhost
+    connection: local
+    shell: |
+      docker stop "{{ inventory_hostname }}"
+      docker commit "{{ inventory_hostname }}" "{{ image_tag }}"
+      docker rm "{{ inventory_hostname }}"
+
+  - name: push image
+    delegate_to: localhost
+    connection: local
+    shell: |
+      docker push "{{ image_tag }}"

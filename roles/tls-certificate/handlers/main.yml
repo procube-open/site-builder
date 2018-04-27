@@ -1,0 +1,7 @@
+---
+- name: update trust store
+  shell: update-ca-trust
+  listen: update CA cert
+- name: restart docker daemo
+  service: name=docker state=restarted
+  listen: update CA cert

@@ -1,0 +1,3 @@
+[defaults]
+inventory={{ site_root | default(ansible_env.PWD) }}/config/hosts
+roles_path={{ site_root | default(ansible_env.PWD) }}/config/roles:roles

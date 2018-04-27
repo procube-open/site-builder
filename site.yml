@@ -1,0 +1,40 @@
+---
+- name: setup docker host servers
+  hosts: targets
+  become: true
+  tags: setup-hosts
+  vars_files:
+    - ../config/vars/main.yml
+
+  roles:
+    - base
+    - hostsfile
+    - ntp-client
+    - iptables
+    - role: ca
+      when: inventory_hostname in groups['managers']
+    - tls-certificate
+    - docker
+    - reboot
+
+- name: setup manager
+  hosts: managers
+  become: false
+  tags: composer
+  vars_files:
+    - ../config/vars/main.yml
+  vars:
+    # for role pip-venv
+    venvs:
+      - ansible
+      - compose
+    mainenv: ansible
+
+  roles:
+    - pip-venv
+    - ansible
+    - docker-compose
+    - role: tls-certificate
+      become: true
+      arg_tls_hostname: "{{ registry_fqdn }}"
+    - manager

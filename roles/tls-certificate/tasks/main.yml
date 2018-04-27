@@ -1,0 +1,69 @@
+---
+# do not use ansible openssl_privatekey,openssl_csr module
+# which needs pyOpenSLL on remote host
+- name: CSR
+  shell: |
+    openssl req -batch -new -newkey rsa:4096 -nodes -sha256 \
+      -subj '/E={{ target_EMail }}/C={{ target_C }}/ST={{ target_ST }}/L={{ target_L }}/O={{ target_O }}/OU={{ target_OU }}/CN={{ target_CN }}' \
+      -keyout /etc/pki/tls/private/{{ tls_hostname }}_key.pem \
+      -out /etc/pki/tls/misc/{{ tls_hostname }}.csr
+  args:
+    creates: /etc/pki/tls/misc/{{ tls_hostname }}.csr
+- name: make extra attributes file
+  tags: signed
+  delegate_to: "{{ manager_host }}"
+  become: False
+  template:
+    src: extfile.cnf
+    dest: "cawork/{{ tls_hostname }}-extfile.cnf"
+- name: fetch csr file into local
+  tags: signed
+  fetch:
+    src: "/etc/pki/tls/misc/{{ tls_hostname }}.csr"
+    fail_on_missing: yes
+    flat: yes
+    dest: "/var/tmp/mother/misc/{{ tls_hostname }}.csr"
+- name: put csr file into manager
+  tags: signed
+  delegate_to: "{{ manager_host }}"
+  become: False
+  copy:
+    src: "/var/tmp/mother/misc/{{ tls_hostname }}.csr"
+    dest: "cawork/{{ tls_hostname }}.csr"
+- name: signed certificate
+  tags: signed
+  delegate_to: "{{ manager_host }}"
+  become: False
+  shell: |
+    openssl x509 -req -days "{{ target_valid_in }}" -sha256 -in cawork/{{ tls_hostname }}.csr \
+    -CA  cawork/cacert.pem \
+    -CAkey cawork/cakey.pem \
+    -CAcreateserial -out cawork/{{ tls_hostname }}_cert.pem \
+    -extfile cawork/{{ tls_hostname }}-extfile.cnf
+  args:
+    creates: "cawork/{{ tls_hostname }}_cert.pem"
+- name: fetch cert file into local
+  delegate_to: "{{ manager_host }}"
+  tags: signed
+  fetch:
+    src: "cawork/{{ tls_hostname }}_cert.pem"
+    fail_on_missing: yes
+    flat: yes
+    dest: "/var/tmp/mother/certs/{{ tls_hostname }}_cert.pem"
+- name: install cert files
+  tags: signed
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    group: root
+    owner: root
+    mode: 0644
+  with_items:
+    - src: /var/tmp/mother/cacert.pem
+      dest: /etc/pki/ca-trust/source/anchors/cacert.pem
+    - src: /var/tmp/mother/certs/{{ tls_hostname }}_cert.pem
+      dest: /etc/pki/tls/certs/{{ tls_hostname }}_cert.pem
+  register: certs
+- name: update trust store
+  shell: update-ca-trust
+  when: (certs.results | selectattr('item.src', 'equalto', '/var/tmp/mother/cacert.pem') | list)[0].changed

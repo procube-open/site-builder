@@ -1,0 +1,41 @@
+version: "3.4"
+services:
+  registry_server:
+    image: registry:2
+    ports:
+      - "{{registry_port | default(5000)}}:5000"
+    networks:
+      - regnet
+    environment:
+      REGISTRY_STORAGE_FILESYSTEM_DELETEE_ENABLED: 'True'
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_HTTP_TLS_CERTIFICATE: "/certs/certs/{{ registry_fqdn }}_cert.pem"
+      REGISTRY_HTTP_TLS_KEY: "/certs/private/{{ registry_fqdn }}_key.pem"
+    volumes:
+      - "regdata:/var/lib/registry"
+      - "/home/{{ administrator }}/registry:/auth"
+      - "/etc/pki/tls:/certs"
+    restart: always
+
+  registry_frontend:
+    image: hyper/docker-registry-web:latest
+    networks:
+      - regnet
+    environment:
+      REGISTRY_URL: "https://registry_server:5000/v2"
+      REGISTRY_NAME: {{ registry_fqdn }}:{{registry_port | default(5000)}}
+      REGISTRY_READONLY: "false"
+      REGISTRY_TRUST_ANY_SSL: "true"
+      REGISTRY_BASIC_AUTH: "{{ (docker_user + ":" + registry_password) | b64encode }}"
+    ports:
+      - "{{registry_frontend_port | default(8080)}}:8080"
+    restart: always
+
+volumes:
+  regdata:
+    # name attirbuite supportted only if api version >= 3.4
+    name: regdata
+networks:
+  regnet:

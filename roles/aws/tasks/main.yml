@@ -1,0 +1,66 @@
+---
+- name: "install aws cli and boto"
+  become: False
+  pip:
+    name: "{{ item }}"
+    state: latest
+    virtualenv: "{{ ansible_env.PWD }}/ansible"
+    # virtualenv: "/home/{{ builder }}/ansible"
+  with_items:
+    - awscli
+    - boto3
+    - boto
+- name: "create directories"
+  become: False
+  file:
+    dest: "{{ item }}"
+    state: directory
+  with_items:
+    - ".aws/"
+    - ".resource/"
+- name: "copy configuration and credential files"
+  become: False
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: 0600
+  with_items:
+    - src: aws_cli_config.j2
+      dest: ".aws/config"
+    - src: aws_cli_credentials.j2
+      dest: ".aws/credentials"
+- name: "put private key"
+  become: False
+  copy:
+    content: "{{ (lookup('template', '../credentials.yml') | from_yaml).id_rsa }}"
+    dest: ".ssh/id_rsa"
+    mode: 0600
+- name: "Setup commands"
+  become: false
+  blockinfile:
+    dest: ~/.bashrc
+    insertafter: BOF
+    state: present
+    block: "alias {{ item.name }}='{{ item.command }}'"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{item.name}}"
+  with_items:
+    - name: buildAws
+      command: "(cd {{ site_root }}; ansible-playbook site-builder/build-aws.yml; connectAws)"
+    - name: buildHosts
+      command: "(cd {{ site_root }}; ansible-playbook site-builder/site.yml)"
+    - name: connectAws
+      command: "startEc2; (cd {{ site_root }}; ansible-playbook -i config/hosts -e mode=present ~/.resource/connect_aws.yml)"
+    - name: disconnectAws
+      command: "(cd {{ site_root }}; ansible-playbook -i config/hosts -e mode=absent ~/.resource/connect_aws.yml)"
+    - name: stopEc2
+      command: "disconnectAws;(cd {{ site_root }}; ansible-playbook -i config/hosts ~/.resource/stop_ec2.yml)"
+    - name: startEc2
+      command: "(cd {{ site_root }}; ansible-playbook -i config/hosts -e target_state=running ~/.resource/stop_ec2.yml)"
+    - name: restartEc2
+      command: "(cd {{ site_root }}; ansible-playbook -i config/hosts -e target_state=restarted ~/.resource/stop_ec2.yml)"
+    - name: terminateEc2
+      command: "disconnectAws;(cd {{ site_root }}; ansible-playbook -i config/hosts -e target_state=absent ~/.resource/stop_ec2.yml)"
+    - name: destroyAws
+      command: "terminateEc2;(cd {{ site_root }}; ansible-playbook -i config/hosts ~/.resource/destroy_vpc.yml)"
+    - name: synctime
+      command: sudo systemctl restart chronyd && sudo chronyc makestep

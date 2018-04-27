@@ -1,0 +1,54 @@
+---
+- name: setup docker ce repository
+  get_url:
+    url: https://download.docker.com/linux/centos/docker-ce.repo
+    dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: 0644
+- name: install docker package
+  yum:
+    name: docker-ce
+    state: present
+- name: add docker group
+  group:
+    name: docker
+    state: present
+- name: allow local connection to administrator
+  user:
+    name: "{{ administrator }}"
+    groups: docker
+- name: insert allow api port rule into iptables
+  blockinfile:
+    dest: /etc/sysconfig/iptables
+    insertafter: -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+    block: |
+      -A INPUT -p tcp -m state --state NEW -m multiport --dport 2376 -j ACCEPT
+    marker: "# {mark} ANSIBLE MANAGED BLOCK for docker api"
+  when: docker_remote_api
+- name: create directory /etc/docker
+  file:
+    dest: "/etc/docker"
+    state: directory
+    mode: 0700
+    owner: root
+    group: root
+- name: setup certificate for remote api
+  template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: 0644
+- name: insert allow swarm port rule into iptables
+  blockinfile:
+    dest: /etc/sysconfig/iptables
+    insertafter: -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+    block: |
+      -A INPUT -p tcp -s {{ internal_network_addr }} -m state --state NEW -m multiport --dport 2377,7946 -j ACCEPT
+      -A INPUT -p udp -s {{ internal_network_addr }} -m state --state NEW -m multiport --dport 7946,4789 -j ACCEPT
+    marker: "# {mark} ANSIBLE MANAGED BLOCK for swarm"
+  when : internal_network_addr | default(false)
+- name: enable service
+  service: name=docker enabled=yes
+  notify: require reboot

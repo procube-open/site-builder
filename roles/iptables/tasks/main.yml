@@ -1,0 +1,10 @@
+---
+# common utiility packages.
+
+- name: install packages
+  yum: name=iptables-services state=present
+- name: disable firewalld
+  yum: name=firewalld state=removed
+- name: enable services
+  service: name=iptables enabled=yes
+  notify: require reboot

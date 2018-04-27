@@ -1,0 +1,85 @@
+{% raw %}
+---
+- name: Connect aws enviroment
+  hosts: localhost
+  connection: local
+  vars:
+    safe_mode: "{{mode | default('present')}}"
+{% endraw %}
+    manager_host: "{{ manager_host }}"
+    registry_fqdn: "{{ registry_fqdn }}"
+{% raw %}
+
+  tasks:
+  - name: get my global ip
+    ipify_facts:
+    register: myip
+    when: safe_mode == 'present'
+  - name: build rule list
+    set_fact:
+      inbound_rules:
+      - proto: all
+        group_name: default
+      - proto: tcp #ssh
+        to_port: 22
+        from_port: 22
+        cidr_ip: "{{ myip.ansible_facts.ipify_public_ip }}/32"
+      - proto: tcp # docker api
+        to_port: 2376
+        from_port: 2376
+        cidr_ip: "{{ myip.ansible_facts.ipify_public_ip }}/32"
+      - proto: tcp # docker registory
+        to_port: 5443
+        from_port: 5443
+        cidr_ip: "{{ myip.ansible_facts.ipify_public_ip }}/32"
+    when: safe_mode == 'present'
+  - name: set inter-member comm rule and Name tag to default security group for VPC
+    ec2_group:
+      state: present
+      name: default
+      tags:
+        Name: "group-{{ item.name }}"
+      vpc_id: "{{ item.id }}"
+      description: "default VPC security group"
+{% endraw %}
+      region: "{{ aws.region }}"
+{% raw %}
+      rules: "{{ inbound_rules | default([]) }}"
+    register: group
+    with_items:
+{% endraw %}
+{% for result in vpc_info.results %}
+      - id: {{ result.vpc.id }}
+        name: {{ result.item.name }}
+{% endfor %}
+  - name: gather ec2 fact
+    ec2_instance_facts:
+      instance_ids:
+{% for result in ec2.results %}
+        - {{ result.tagged_instances[0].id }}
+{% endfor %}
+{% raw %}
+    register: ec2_fact
+  - name: "Build hosts file"
+    become: true
+    blockinfile:
+      dest: /etc/hosts
+      insertafter: BOF
+      state: "{{ safe_mode }}"
+      block: "{{ item.public_ip_address }} {{ item.tags.Name }}{% if item.tags.Name == (manager_host | default(''))%} {{ registry_fqdn }}{% endif %}"
+      marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item.tags.Name }}"
+    with_items: "{{ec2_fact.instances}}"
+  - name: set .ssh/config
+    blockinfile:
+      dest: "~/.ssh/config"
+      marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item.tags.Name }}"
+      insertafter: BOF
+      state: "{{ safe_mode }}"
+      create: yes
+      mode: 0644
+      block: |
+        Host {{ item.tags.Name }}
+          User centos
+          StrictHostKeyChecking no
+    with_items: "{{ec2_fact.instances}}"
+{% endraw %}

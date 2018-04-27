@@ -1,0 +1,48 @@
+---
+- name: "setup registry - cresate dir"
+  file:
+    dest: "registry"
+    state: directory
+    mode: 0755
+
+- name: install httpd-tools package
+  become: true
+  yum:
+    name: httpd-tools
+    state: present
+- name: make htpasswd file
+  shell: "htpasswd -cBb 'registry/htpasswd' '{{ docker_user }}' '{{ registry_password }}'"
+  args:
+    creates: "registry/htpasswd"
+
+- name: "install registry docker-compose.yml"
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: 0755
+  with_items:
+    - src: registry.yml
+      dest: "registry/docker-compose.yml"
+    # - src: images.yml
+    #   dest: "images.yml"
+
+- name: put registry_password file into manager home
+  copy:
+    content: "{{ registry_password }}"
+    dest: ~/registry/registry_password
+    mode: 0600
+
+- name: set ansible_python_interpreter
+  set_fact: "ansible_python_interpreter={{ ansible_env.PWD }}/compose/bin/python"
+
+- name: compose up containers
+  docker_service:
+    project_src: "registry"
+    docker_host: "tcp://{{ inventory_hostname }}:2376"
+    tls: yes
+    cacert_path: ".docker/ca.pem"
+    cert_path: ".docker/cert.pem"
+    key_path:  ".docker/key.pem"
+    # cacert_path: "{{ ansible_env.PWD }}/.docker/ca.pem"
+    # cert_path: "{{ ansible_env.PWD }}/.docker/cert.pem"
+    # key_path:  "{{ ansible_env.PWD }}/.docker/key.pem"

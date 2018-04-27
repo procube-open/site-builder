@@ -1,0 +1,52 @@
+---
+- name: "install playbooks - create directory"
+  file:
+    path: "./site-builder/"
+    state: directory
+    mode: 0755
+
+- name: "install playbooks - copy file"
+  copy:
+    src: "{{ item }}"
+    dest: "./site-builder/"
+    mode: 0755
+  with_items:
+    - build-images.yml
+    - deploy-services.yml
+
+- name: "setup docker connection - cresate dir"
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+  with_items: "{{ groups['targets'] }}"
+
+- name: "setup docker connection - shortcut alias"
+  become: false
+  blockinfile:
+    dest: .bashrc
+    insertafter: BOF
+    state: present
+    block: "alias dlg-{{ item }}='export DOCKER_HOST=tcp://{{ item }}:2376;export DOCKER_TLS_VERIFY=1;. ~/compose/bin/activate; export PS1=\"[dlg-{{ item }}@\\h \\W]\\$ \"; cd ~/{{ item }}'"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK dlg shortcut {{item}}"
+  with_items: "{{ groups['targets'] }}"
+
+- name: "install private key for ssh to target machines"
+  copy:
+    content: "{{ (lookup('template', '../credentials.yml') | from_yaml).id_rsa }}"
+    dest: ".ssh/id_rsa"
+    mode: 0600
+
+- name: "Setup commands"
+  become: false
+  blockinfile:
+    dest: .bashrc
+    insertafter: BOF
+    state: present
+    block: "alias {{ item.name }}='{{ item.command }}'"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{item.name}}"
+  with_items:
+    - name: buildImages
+      command: "(cd {{ ansible_env.PWD }}; ansible-playbook site-builder/build-images.yml)"
+    - name: deployServices
+      command: "(cd {{ ansible_env.PWD }}; ansible-playbook site-builder/deploy-services.yml)"

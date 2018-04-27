@@ -1,0 +1,59 @@
+---
+- name: install epel yum repo
+  become: True
+  yum: name=epel-release state=present
+- name: install python package
+  become: True
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - python
+    - python-pip
+    - python-virtualenv
+- name: add builder group
+  become: True
+  group:
+    name: "{{ builder_group }}"
+    gid: 1000
+    state: present
+- name: add builder user
+  become: True
+  user:
+    name: "{{ builder }}"
+    uid: 1000
+    group: "{{ builder_group }}"
+    state: present
+- name: setup auto enter virtualenv at login
+  lineinfile:
+    path: "/home/{{ builder }}/.bashrc"
+    line: ". /home/{{ builder }}/{{ mainenv }}/bin/activate"
+- name: create directory for virtualenv
+# to avoid error: WARNING: Error loading config file:/home/{{ builder }}/.docker/config.json - read /home/{{ builder }}/.docker/config.json: is a directory
+  file:
+    dest: "/home/{{ builder }}/{{ item }}"
+    state: directory
+    mode: 0775
+    owner: "{{ builder }}"
+    group: "{{ builder_group }}"
+  with_items: "{{ venvs }}"
+- name: "setup virtualenv for {{ builder }}"
+  # --system-site-packages is needed by template module to avoid following error
+  # Aborting, target uses selinux but python bindings (libselinux-python) aren't installed!
+  # https://github.com/trailofbits/algo/issues/356
+  # command: "virtualenv --system-site-packages /home/{{ builder }}/{{ item }}"
+  command: "virtualenv /home/{{ builder }}/{{ item }}"
+  become: false
+  args:
+    creates: "/home/{{ builder }}/{{ item }}/bin/activate"
+  with_items: "{{ venvs }}"
+- name: gather pip info
+  shell: "/home/{{ builder }}/{{ item }}/bin/pip show pip | awk '/^Version/{print $2}'"
+  register: pip_version
+  become_user: "{{ builder }}"
+  changed_when: False
+  with_items: "{{ venvs }}"
+- name: "upgrade pip in virtual env {{ item }}"
+  shell: "/home/{{ builder }}/{{ item }}/bin/pip install --upgrade pip setuptools"
+  when: (pip_version.results | selectattr('item', 'equalto', item) | list)[0].stdout is version('9.0', '<')
+  with_items: "{{ venvs }}"

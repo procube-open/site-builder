@@ -1,0 +1,3 @@
+---
+# credentials
+registry_password: "{{ lookup('password', '~/registry_password length=15') }}"

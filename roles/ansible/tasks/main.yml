@@ -1,0 +1,17 @@
+---
+- name: install ansible and docker-py
+  become: False
+  pip:
+    name: "{{ item }}"
+    state: present
+    virtualenv: "{{ ansible_env.PWD }}/ansible"
+  with_items:
+    - urllib3
+    - requests
+    - ansible
+    - docker-py
+- name: "copy configuration files"
+  become: False
+  template:
+    src: ansible.cfg.j2
+    dest: ".ansible.cfg"
