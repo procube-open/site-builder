@@ -2,6 +2,7 @@
 site-builder は複数台のサーバにまたがって docker コンテナを運用するサイトを構築するためのツールです。このツールは ansible スクリプトで記述されています。サイトの構築は、以下の2つのフェーズで行われます。
 1. ホスト構築フェーズ
 2. コンテナ配備フェーズ
+
 続く節でそれぞれのフェーズで提供する機能について説明します。
 
 ## ホスト構築フェーズ
@@ -20,19 +21,24 @@ Mac OS上で以下の環境を揃えます。準備段階から、mother ホス�
 
 ## VirtualBox+Vagrant
 VirtualBox と Vagrant をインストールしてください。
+
 参考：https://qiita.com/ats05/items/9bbd033e02323b8a68bd
 
 ## NFS
 NFS をインストールしてください。
+
 参考： http://www.1x1.jp/blog/2013/08/vagrant_synced_folder_with_nfs.html
 
 ## homebrew
 homebrew をインストールしてください。
+
 参考：https://weblabo.oscasierra.net/homebrew-1/
+
 ここで、 xcode や xcode cli をダウンロードインストールすることになりますが、このサイズが大きく時間がかかるので注意してください。
 
 ## ansible
 ansible をインストールしてください。
+
 参考：https://weblabo.oscasierra.net/ansible-homebrew-install-1/
 
 ## Vagrant reload plugin
@@ -75,6 +81,7 @@ site-builder を clone したディレクトリに以下のように設定ファ
 各サービスへのアクセスのための秘密情報を credentials.yml に設定してください。
 - AWS EC2 へのSSH用秘密鍵を変数 id_rsa に設定
 - AWS API にアクセスするための鍵を変数 access_key_id　と secret_access_key　に設定
+
 設定例：
 ```
 access_key_id: EXAMPLEOFACCESSKEYID
@@ -101,6 +108,7 @@ id_rsa: |
 mother ホストは NAT とホストオンリーの2つのネットワークを使用します。
 mother ホストのホストオンリーの IPアドレスとネットマスクを変数 mother_ip と mother_netmask に設定してください。
 また、 /vagrant ディレクトリの同期方法を変数 sync_type に設定してください。
+
 設定例：
 ```
 mother_ip: 192.168.56.40
