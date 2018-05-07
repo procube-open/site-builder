@@ -10,11 +10,11 @@
     - ../config/vars/main.yml
 
   tasks:
-  - name: "setup docker compose file - cresate dir"
+  - name: "setup docker compose file - create dir"
     delegate_to: localhost
     connection: local
     file:
-      dest: "~{{ safe_builder }}/{{ inventory_hostname }}/{{ item }}"
+      dest: "~{{ safe_builder }}/hosts.d/{{ inventory_hostname }}/{{ item }}"
       state: directory
       mode: 0755
       owner: "{{ safe_builder }}"
@@ -38,8 +38,8 @@
     delegate_to: localhost
     connection: local
     template:
-      src: "../config/services/{{item}}.yml"
-      dest: "~{{ safe_builder }}/{{ inventory_hostname }}/{{ item }}/docker-compose.yml"
+      src: "../config/services/{{ item }}/docker-compose.yml"
+      dest: "~{{ safe_builder }}/hosts.d/{{ inventory_hostname }}/{{ item }}/docker-compose.yml"
       mode: 0755
       owner: "{{ safe_builder }}"
       group: "{{ safe_builder_group }}"
@@ -61,10 +61,21 @@
   - name: compose up containers
     delegate_to: "dlg-{{ inventory_hostname }}"
     docker_service:
-      project_src: "~{{ safe_builder }}/{{ inventory_hostname }}/{{ item }}"
+      project_src: "~{{ safe_builder }}/hosts.d/{{ inventory_hostname }}/{{ item }}"
       docker_host: "tcp://{{ inventory_hostname }}:2376"
+      timeout: 120
       tls: yes
       cacert_path: "/home/{{ safe_builder }}/.docker/ca.pem"
       cert_path: "/home/{{ safe_builder }}/.docker/cert.pem"
       key_path:  "/home/{{ safe_builder }}/.docker/key.pem"
     with_items: "{{ services | default([])}}"
+
+  - name: install backup shell script
+    template:
+      src: "do{{ item }}.sh"
+      dest: "hosts.d/{{ inventory_hostname }}/do{{ item }}"
+      mode: 0755
+    with_items:
+      - Backup
+      - Restore
+    when: backup_scripts is defined

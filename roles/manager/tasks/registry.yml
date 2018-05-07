@@ -1,5 +1,5 @@
 ---
-- name: "setup registry - cresate dir"
+- name: "setup registry - create dir"
   file:
     dest: "registry"
     state: directory
@@ -35,7 +35,7 @@
 - name: set ansible_python_interpreter
   set_fact: "ansible_python_interpreter={{ ansible_env.PWD }}/compose/bin/python"
 
-- name: compose up containers
+- name: compose up registry container
   docker_service:
     project_src: "registry"
     docker_host: "tcp://{{ inventory_hostname }}:2376"
@@ -43,6 +43,3 @@
     cacert_path: ".docker/ca.pem"
     cert_path: ".docker/cert.pem"
     key_path:  ".docker/key.pem"
-    # cacert_path: "{{ ansible_env.PWD }}/.docker/ca.pem"
-    # cert_path: "{{ ansible_env.PWD }}/.docker/cert.pem"
-    # key_path:  "{{ ansible_env.PWD }}/.docker/key.pem"

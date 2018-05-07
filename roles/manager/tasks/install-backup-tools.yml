@@ -1,0 +1,37 @@
+---
+- name: "setup bakckup directory"
+  file:
+    path: "backup.d/{{ item }}"
+    state: directory
+    mode: 0755
+  with_items: "{{ groups['targets'] }}"
+- name: add backup script
+  become: True
+  copy:
+    src: site-backup.sh
+    dest: /usr/bin/site-backup.sh
+    mode: 0755
+- name: add backup service
+  become: True
+  copy:
+    src: "{{item}}"
+    dest: /usr/lib/systemd/system
+    mode: 0644
+  with_items:
+    - backup@.service
+    - backup@.timer
+- name: enable and start backup timer service
+  become: True
+  service:
+    name: "backup@{{ builder }}.timer"
+    state: started
+    enabled: yes
+
+- name: "backup script template"
+  copy:
+    src: "{{ item }}"
+    dest: "./site-builder/"
+    mode: 0644
+  with_items:
+    - doBackup.sh
+    - doRestore.sh

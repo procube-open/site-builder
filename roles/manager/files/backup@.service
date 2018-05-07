@@ -1,0 +1,9 @@
+[Unit]
+Description=Backup Job
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/%I
+ExecStart=/usr/bin/site-backup.sh
+User=%I
+Group=%I

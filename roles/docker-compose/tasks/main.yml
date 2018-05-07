@@ -5,7 +5,7 @@
     name: docker-compose
     state: present
     virtualenv: "{{ ansible_env.PWD }}/compose"
-- name: "setup tls connection - cresate dir"
+- name: "setup tls connection - create dir"
   become: False
   file:
     dest: ".docker"

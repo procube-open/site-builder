@@ -12,3 +12,7 @@
 - import_tasks: registry.yml
 
 - import_tasks: install-builder.yml
+  tags: bulder
+
+- import_tasks: install-backup-tools.yml
+  tags: backup-tools
