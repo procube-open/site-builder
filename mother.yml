@@ -9,7 +9,10 @@
     - iptables
     - vagrant
     - ntp-client
-    - pip-venv
-    - ansible
-    - aws
+    - role: pip-venv
+      become_user: "{{ administrator }}"
+    - role: ansible
+      become_user: "{{ administrator }}"
+    - role: aws
+      become_user: "{{ administrator }}"
     - reboot

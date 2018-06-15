@@ -33,7 +33,7 @@
   with_items: "{{ safe_venvs }}"
 - name: "upgrade pip in virtual env {{ safe_venvs }}"
   shell: "{{ item }}/bin/pip install --upgrade pip setuptools"
-  when: (pip_version.results | selectattr('item', 'equalto', item) | list)[0].stdout is version('9.0', '<')
+  when: (pip_version.results | selectattr('item', 'equalto', item) | list)[0].stdout is version('10.0', '<')
   with_items: "{{ safe_venvs }}"
 - name: setup auto enter virtualenv at login
   lineinfile:
