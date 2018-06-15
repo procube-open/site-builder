@@ -1,17 +1,17 @@
 ---
 - name: "setup registry - create dir"
   file:
-    dest: "registry"
+    path: "registry"
     state: directory
     mode: 0755
 
 - name: install httpd-tools package
-  become: true
+  become_user: root
   yum:
     name: httpd-tools
     state: present
 - name: make htpasswd file
-  shell: "htpasswd -cBb 'registry/htpasswd' '{{ docker_user }}' '{{ registry_password }}'"
+  shell: "htpasswd -cBb 'registry/htpasswd' '{{ docker_login_user }}' '{{ registry_password }}'"
   args:
     creates: "registry/htpasswd"
 
@@ -21,10 +21,8 @@
     dest: "{{ item.dest }}"
     mode: 0755
   with_items:
-    - src: registry.yml
-      dest: "registry/docker-compose.yml"
-    # - src: images.yml
-    #   dest: "images.yml"
+    - src: registry.yml.j2
+      dest: "~/registry/docker-compose.yml"
 
 - name: put registry_password file into manager home
   copy:
@@ -33,7 +31,8 @@
     mode: 0600
 
 - name: set ansible_python_interpreter
-  set_fact: "ansible_python_interpreter={{ ansible_env.PWD }}/compose/bin/python"
+  set_fact:
+    ansible_python_interpreter: "/home/{{builder}}/compose/bin/python"
 
 - name: compose up registry container
   docker_service:

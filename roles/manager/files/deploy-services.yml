@@ -1,24 +1,20 @@
 ---
 - name: compose containers
   hosts: targets
+  gather_facts: False
   become: false
   tags: compose-containers
-  vars:
-    safe_builder: "{{ hostvars[manager_host].builder }}"
-    safe_builder_group: "{{ hostvars[manager_host].builder_group }}"
   vars_files:
     - ../config/vars/main.yml
 
   tasks:
   - name: "setup docker compose file - create dir"
-    delegate_to: localhost
     connection: local
+    # become_user: "{{ safe_builder }}"
     file:
-      dest: "~{{ safe_builder }}/hosts.d/{{ inventory_hostname }}/{{ item }}"
+      path: "~/hosts.d/{{ inventory_hostname }}/{{ item }}"
       state: directory
       mode: 0755
-      owner: "{{ safe_builder }}"
-      group: "{{ safe_builder_group }}"
     with_items: "{{ services | default([])}}"
 
   - name: add host for delegator
@@ -28,52 +24,47 @@
       enviroment:
         DOCKER_HOST: "tcp://{{ item }}:2376"
         DOCKER_TLS_VERIFY: 1
-      ansible_python_interpreter: "/home/{{ safe_builder }}/compose/bin/python"
-      builder: "{{ safe_builder }}"
-      builder_group: "{{ safe_builder_group }}"
+      ansible_python_interpreter: "../compose/bin/python"
     with_items: "{{ play_hosts }}"
     changed_when: False
 
   - name: "setup docker compose file"
-    delegate_to: localhost
     connection: local
+    # become_user: "{{ safe_builder }}"
     template:
       src: "../config/services/{{ item }}/docker-compose.yml"
-      dest: "~{{ safe_builder }}/hosts.d/{{ inventory_hostname }}/{{ item }}/docker-compose.yml"
-      mode: 0755
-      owner: "{{ safe_builder }}"
-      group: "{{ safe_builder_group }}"
+      dest: "~/hosts.d/{{ inventory_hostname }}/{{ item }}/docker-compose.yml"
     with_items: "{{ services | default([])}}"
 
   - name: Log into private registry
     delegate_to: "dlg-{{ inventory_hostname }}"
     docker_login:
       registry: "{{ registry }}"
-      username: "{{ docker_user }}"
+      username: "{{ docker_login_user }}"
       password: "{{ lookup('file', '../registry/registry_password') }}"
       email: "{{ docker_login_email }}"
       docker_host: "tcp://{{ inventory_hostname }}:2376"
       tls: yes
-      cacert_path: "/home/{{ safe_builder }}/.docker/ca.pem"
-      cert_path: "/home/{{ safe_builder }}/.docker/cert.pem"
-      key_path:  "/home/{{ safe_builder }}/.docker/key.pem"
+      cacert_path: "../.docker/ca.pem"
+      cert_path: "../.docker/cert.pem"
+      key_path:  "../.docker/key.pem"
 
   - name: compose up containers
     delegate_to: "dlg-{{ inventory_hostname }}"
     docker_service:
-      project_src: "~{{ safe_builder }}/hosts.d/{{ inventory_hostname }}/{{ item }}"
+      project_src: "~/hosts.d/{{ inventory_hostname }}/{{ item }}"
       docker_host: "tcp://{{ inventory_hostname }}:2376"
       timeout: 120
       tls: yes
-      cacert_path: "/home/{{ safe_builder }}/.docker/ca.pem"
-      cert_path: "/home/{{ safe_builder }}/.docker/cert.pem"
-      key_path:  "/home/{{ safe_builder }}/.docker/key.pem"
+      cacert_path: "../.docker/ca.pem"
+      cert_path: "../.docker/cert.pem"
+      key_path:  "../.docker/key.pem"
     with_items: "{{ services | default([])}}"
 
   - name: install backup shell script
     template:
       src: "do{{ item }}.sh"
-      dest: "hosts.d/{{ inventory_hostname }}/do{{ item }}"
+      dest: "~/hosts.d/{{ inventory_hostname }}/do{{ item }}"
       mode: 0755
     with_items:
       - Backup

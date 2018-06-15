@@ -1,27 +1,6 @@
 ---
 - name: install docker-compose
-  become: False
   pip:
     name: docker-compose
     state: present
-    virtualenv: "{{ ansible_env.PWD }}/compose"
-- name: "setup tls connection - create dir"
-  become: False
-  file:
-    dest: ".docker"
-    state: directory
-    mode: 0700
-- name: "setup tls connection - put certs"
-  become: False
-  copy:
-    remote_src: yes
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    mode: 0600
-  with_items:
-    - src: /etc/pki/ca-trust/source/anchors/cacert.pem
-      dest: ".docker/ca.pem"
-    - src: "/etc/pki/tls/private/{{ inventory_hostname }}_key.pem"
-      dest: ".docker/key.pem"
-    - src: "/etc/pki/tls/certs/{{ inventory_hostname }}_cert.pem"
-      dest: ".docker/cert.pem"
+    virtualenv: "~/compose"

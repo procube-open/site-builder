@@ -1,0 +1,4 @@
+# {{ ansible_managed }}
+{% for item in play_hosts %}
+{{ hostvars[item].inventory_hostname }},{{ hostvars[item].private_ip }} {{ hostvars[item].ssh_host_key.stdout }}
+{% endfor %}

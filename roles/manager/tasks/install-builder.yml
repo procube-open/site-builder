@@ -1,20 +1,41 @@
 ---
-- name: "install playbooks - create directory"
+- name: "setup tls connection - create dir"
   file:
-    path: "./site-builder/"
+    path: ".docker"
+    state: directory
+    mode: 0700
+- name: "setup tls connection - put certs"
+  copy:
+    remote_src: yes
+    src: "{{ item.src }}"
+    dest: "~/{{ item.dest }}"
+    mode: 0600
+  with_items:
+    - src: /etc/pki/ca-trust/source/anchors/cacert.pem
+      dest: ".docker/ca.pem"
+    - src: "/etc/pki/tls/private/{{ inventory_hostname }}_key.pem"
+      dest: ".docker/key.pem"
+    - src: "/etc/pki/tls/certs/{{ inventory_hostname }}_cert.pem"
+      dest: ".docker/cert.pem"
+- name: "install playbooks - create directory"
+  become_user: "{{ builder }}"
+  file:
+    path: "site-builder"
     state: directory
     mode: 0755
 
 - name: "install playbooks - copy file"
+  become_user: "{{ builder }}"
   copy:
     src: "{{ item }}"
-    dest: "./site-builder/"
+    dest: "~/site-builder/"
     mode: 0644
   with_items:
     - build-images.yml
     - deploy-services.yml
 
 - name: "setup docker connection - create dir"
+  become_user: "{{ builder }}"
   file:
     path: "hosts.d/{{ item }}"
     state: directory
@@ -22,9 +43,9 @@
   with_items: "{{ groups['targets'] }}"
 
 - name: "setup docker connection - shortcut alias"
-  become: false
+  become_user: "{{ builder }}"
   blockinfile:
-    dest: .bashrc
+    path: .bashrc
     insertafter: BOF
     state: present
     block: "alias dlg-{{ item }}='export DOCKER_HOST=tcp://{{ item }}:2376;export DOCKER_TLS_VERIFY=1;. ~/compose/bin/activate; export PS1=\"[dlg-{{ item }}@\\h \\W]\\$ \"; cd ~/hosts.d/{{ item }}'"
@@ -32,13 +53,15 @@
   with_items: "{{ groups['targets'] }}"
 
 - name: "install private key for ssh to target machines"
+  become_user: "{{ builder }}"
   copy:
-    content: "{{ (lookup('template', '../credentials.yml') | from_yaml).id_rsa }}"
-    dest: ".ssh/id_rsa"
+    content: "{{ (lookup('template', '../credentials.yml') | from_yaml).builder_id_rsa }}"
+    dest: "~/.ssh/id_rsa"
     mode: 0600
+  when: (lookup('template', '../credentials.yml') | from_yaml).builder_id_rsa is defined
 
 - name: "Setup commands"
-  become: false
+  become_user: "{{ builder }}"
   blockinfile:
     dest: .bashrc
     insertafter: BOF
@@ -47,6 +70,6 @@
     marker: "# {mark} ANSIBLE MANAGED BLOCK {{item.name}}"
   with_items:
     - name: buildImages
-      command: "(cd {{ ansible_env.PWD }}; ansible-playbook site-builder/build-images.yml)"
+      command: "(cd ~; ansible-playbook site-builder/build-images.yml)"
     - name: deployServices
-      command: "(cd {{ ansible_env.PWD }}; ansible-playbook site-builder/deploy-services.yml)"
+      command: "(cd ~; ansible-playbook site-builder/deploy-services.yml)"

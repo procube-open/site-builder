@@ -1,25 +1,14 @@
 ---
-# - name: install pyOpenSSL
-#   pip:
-#     name: pyOpenSSL
-#     state: present
 - name: create work directory for extra attribute file, csr
-  become: False
   file:
     path: "cawork"
     state: directory
     mode: 0775
-# - name: CA private key
-#   shell: openssl genrsa -aes256 -out /etc/pki/CA/private/cakey.pem 4096
-#   args:
-#     creates: /etc/pki/CA/private/cakey.pem
 - name: setup extra attribute file
-  become: False
   copy:
     src: extfile.cnf
-    dest: cawork/extfile-ca.cnf
+    dest: "~/cawork/extfile-ca.cnf"
 - name: CA CSR
-  become: False
   shell: |
     openssl req -batch -new -newkey rsa:4096 -nodes -sha256 \
       -subj '/E={{ ca_EMail }}/C={{ ca_C }}/ST={{ ca_ST }}/L={{ ca_L }}/O={{ ca_O }}/OU={{ ca_OU }}/CN={{ ca_CN }}' \

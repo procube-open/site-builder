@@ -1,6 +1,6 @@
 ---
   - name: "Build hosts file"
-    become: true
+    become: True
     blockinfile:
       dest: /etc/hosts
       insertafter: BOF

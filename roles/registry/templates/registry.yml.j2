@@ -15,7 +15,7 @@ services:
       REGISTRY_HTTP_TLS_KEY: "/certs/private/{{ registry_fqdn }}_key.pem"
     volumes:
       - "regdata:/var/lib/registry"
-      - "/home/{{ administrator }}/registry:/auth"
+      - "/home/{{ builder }}/registry:/auth"
       - "/etc/pki/tls:/certs"
     restart: always
 
@@ -28,14 +28,23 @@ services:
       REGISTRY_NAME: {{ registry_fqdn }}:{{registry_port | default(5000)}}
       REGISTRY_READONLY: "false"
       REGISTRY_TRUST_ANY_SSL: "true"
-      REGISTRY_BASIC_AUTH: "{{ (docker_user + ":" + registry_password) | b64encode }}"
+      REGISTRY_BASIC_AUTH: "{{ (docker_login_user + ":" + registry_password) | b64encode }}"
     ports:
       - "{{registry_frontend_port | default(8080)}}:8080"
     restart: always
 
-volumes:
-  regdata:
-    # name attirbuite supportted only if api version >= 3.4
-    name: regdata
 networks:
   regnet:
+
+volumes:
+  regdata:
+{% if master_node is defined %}
+    # name attirbuite supportted only if api version > 3.4
+    name: regdata
+    driver: drbdmanage
+    driver_opts:
+      fs: xfs
+      size: "{{registry_size | default(3000)}}"
+      replicas: 3
+    # external: true
+{% endif %}

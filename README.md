@@ -86,7 +86,7 @@ site-builder を clone したディレクトリに以下のように設定ファ
 ```
 access_key_id: EXAMPLEOFACCESSKEYID
 secret_access_key: EXAMPLEOFSECRETACCESSKEY
-id_rsa: |
+builder_id_rsa: |
   -----BEGIN RSA PRIVATE KEY-----
   MIICXwIBAAKBgQDZBHBOzM1pIMEviVkE1EclpruTvSI29gXyIkbvefopkInovMjg
   TRE+YScYgWFq1/S6kajB4zzZFxXp7l6ml/ay0idq0Ropzxs/BeNgSbSgr8ZRoVW6

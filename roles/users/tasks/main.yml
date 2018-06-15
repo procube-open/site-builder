@@ -1,0 +1,53 @@
+---
+- name: add user groups
+  group:
+    name: "{{ item.key }}"
+    gid: "{{ item.value.gid }}"
+    state: present
+  with_dict: "{{ user_groups }}"
+- name: "Allow  passwordless sudo to user groups"
+  template:
+    src: sudoer.j2
+    dest: "/etc/sudoers.d/{{item.key}}"
+  with_dict: "{{ user_groups }}"
+- name: add users
+  user:
+    name: "{{ item.key }}"
+    uid: "{{ item.value.uid }}"
+    group: "{{ item.value.group }}"
+    state: present
+  with_dict: "{{ users }}"
+- name: set authorized key for users
+  authorized_key:
+    user: "{{ item.key }}"
+    state: present
+    key: "{{ item.value.id_rsa_pub }}"
+  with_dict: "{{ users }}"
+- name: prohibit login as root for sshd
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^PermitRootLogin"
+    insertafter: "^#PermitRootLogin"
+    line: "PermitRootLogin no"
+- name: gather ssh host keys
+  shell: cat /etc/ssh/ssh_host_ecdsa_key.pub
+  changed_when: False
+  register: ssh_host_key
+# - name: generate known_hosts for all users
+#   include_tasks: known-hosts.yml
+#   with_dict: "{{users}}"
+#   loop_control:
+#     loop_var: user
+- name: add builder group
+  group:
+    name: "{{ builder_group }}"
+    gid: 1000
+    state: present
+  when: "'managers' in group_names"
+- name: add builder user
+  user:
+    name: "{{ builder }}"
+    uid: 1000
+    group: "{{ builder_group }}"
+    state: present
+  when: "'managers' in group_names"

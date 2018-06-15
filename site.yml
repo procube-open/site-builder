@@ -1,7 +1,7 @@
 ---
 - name: setup docker host servers
   hosts: targets
-  become: true
+  become: True
   tags: setup-hosts
   vars_files:
     - ../config/vars/main.yml
@@ -9,32 +9,102 @@
   roles:
     - base
     - hostsfile
-    - ntp-client
+    - role: ntp-client
+      when: ntp_servers is defined
     - iptables
-    - role: ca
-      when: inventory_hostname in groups['managers']
-    - tls-certificate
-    - docker
+    - role: internal-network
+      when: internal_net_if is defined
+    - users
+    - strict-source-ip
     - reboot
 
-- name: setup manager
+- name: setup manager pip venv
   hosts: managers
-  become: false
-  tags: composer
+  become_user: "{{ builder }}"
+  become: True
+  tags: manager-venv
   vars_files:
     - ../config/vars/main.yml
-  vars:
-    # for role pip-venv
-    venvs:
-      - ansible
-      - compose
-    mainenv: ansible
 
   roles:
-    - pip-venv
+    - role: pip-venv
+      venvs:
+        - ansible
+        - compose
     - ansible
     - docker-compose
+    - ca
+
+- name: import site specific roles
+  hosts: targets
+  become: True
+  vars_files:
+    - ../config/vars/main.yml
+  tags: addon
+  tasks:
+    - include_tasks: "../config/{{ addon_playbook }}"
+      when: addon_playbook is defined
+  roles:
+    - reboot
+
+- name: setup docker hosts
+  hosts: targets
+  tags: setup-docker
+  become: True
+  vars_files:
+    - ../config/vars/main.yml
+
+  roles:
+    - tls-certificate
+    - docker
+    - role: drbd
+      when: master_node is defined
+    - reboot
+
+- name: setup manager user
+  hosts: managers
+  become_user: "{{ builder }}"
+  become: True
+  tags: manager-user
+  vars_files:
+    - ../config/vars/main.yml
+
+  roles:
     - role: tls-certificate
-      become: true
+      become_user: root
       arg_tls_hostname: "{{ registry_fqdn }}"
     - manager
+    - reboot
+
+- name: build cluster
+  hosts: targets
+  become: True
+  tags: build-cluster
+  vars_files:
+    - ../config/vars/main.yml
+
+  roles:
+    - role: dango
+      when: master_node is defined
+- name: add drbd members
+  serial: 1
+  hosts: targets
+  become: True
+  tags: build-cluster
+  vars_files:
+    - ../config/vars/main.yml
+
+  roles:
+    - role: dango-serial
+      when: master_node is defined
+
+- name: setup private registry
+  hosts: managers
+  become_user: "{{ builder }}"
+  become: True
+  vars_files:
+    - ../config/vars/main.yml
+  tags: registry
+
+  roles:
+    - registry

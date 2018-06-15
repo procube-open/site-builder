@@ -1,15 +1,15 @@
 ---
 - name: load config from git
+  tags: load-config
   import_tasks: load-config-git.yml
   when: git is defined
 
 - name: copy config
+  tags: copy-config
   copy:
     src: "../config"
-    dest: "./"
+    dest: "~/"
   when: git is not defined
-
-- import_tasks: registry.yml
 
 - import_tasks: install-builder.yml
   tags: bulder

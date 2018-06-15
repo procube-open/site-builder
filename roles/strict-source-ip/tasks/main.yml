@@ -1,0 +1,33 @@
+---
+- name: permit access to any port from internal network to dns
+  blockinfile:
+    dest: /etc/sysconfig/iptables
+    insertafter: -A INPUT -p icmp -j ACCEPT
+    block: |
+      -A INPUT -i {{internal_net_if}} -s {{internal_net_addr}}/{{internal_net_cidr}} -m state --state NEW -j ACCEPT
+    marker: "# {mark} ANSIBLE MANAGED BLOCK INPUT"
+  notify: require reboot
+  when: internal_net_if is defined
+- name: delete default permition for sshd port from iptables
+  lineinfile:
+    dest: /etc/sysconfig/iptables
+    line: -A INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT
+    state: absent
+  notify: require reboot
+  when: ssh_source_ips is defined
+- name: insert src ip stricted permition for sshd port from iptables
+  blockinfile:
+    dest: /etc/sysconfig/iptables
+    insertafter: -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+    block: |
+      -A INPUT -p tcp -s {{ item }} -m state --state NEW -m multiport --dport {{safe_sshd_port}} -m hashlimit --hashlimit-name consul_tcp_limit --hashlimit 10/sec --hashlimit-burst 100 --hashlimit-mode srcip --hashlimit-htable-expire 360000 -j ACCEPT
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item }}"
+  when: ssh_source_ips is defined
+  notify: require reboot
+  with_items: "{{ ssh_source_ips }}"
+- name: set sshd port number
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^Port"
+    insertafter: "^#Port"
+    line: "Port {{safe_sshd_port}}"

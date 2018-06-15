@@ -1,0 +1,11 @@
+---
+- name: set known host
+  blockinfile:
+    block: "{{ hostvars[item].inventory_hostname }},{{ hostvars[item].private_ip }} {{ hostvars[item].ssh_host_key.stdout }}"
+    dest: "/home/{{user.key}}/.ssh/known_hosts"
+    owner: "{{user.key}}"
+    group: "{{user.value.group}}"
+    mode: 0600
+    create: True
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item }}"
+  with_items: "{{ play_hosts }}"

@@ -1,0 +1,1 @@
+safe_sshd_port: "{{ sshd_port | default(22) }}"

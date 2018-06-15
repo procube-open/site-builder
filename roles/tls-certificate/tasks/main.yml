@@ -12,10 +12,10 @@
 - name: make extra attributes file
   tags: signed
   delegate_to: "{{ manager_host }}"
-  become: False
+  become_user: "{{ hostvars[manager_host].builder }}"
   template:
     src: extfile.cnf
-    dest: "cawork/{{ tls_hostname }}-extfile.cnf"
+    dest: "~/cawork/{{ tls_hostname }}-extfile.cnf"
 - name: fetch csr file into local
   tags: signed
   fetch:
@@ -26,14 +26,14 @@
 - name: put csr file into manager
   tags: signed
   delegate_to: "{{ manager_host }}"
-  become: False
+  become_user: "{{ hostvars[manager_host].builder }}"
   copy:
     src: "/var/tmp/mother/misc/{{ tls_hostname }}.csr"
-    dest: "cawork/{{ tls_hostname }}.csr"
+    dest: "~/cawork/{{ tls_hostname }}.csr"
 - name: signed certificate
   tags: signed
   delegate_to: "{{ manager_host }}"
-  become: False
+  become_user: "{{ hostvars[manager_host].builder }}"
   shell: |
     openssl x509 -req -days "{{ target_valid_in }}" -sha256 -in cawork/{{ tls_hostname }}.csr \
     -CA  cawork/cacert.pem \
@@ -44,6 +44,7 @@
     creates: "cawork/{{ tls_hostname }}_cert.pem"
 - name: fetch cert file into local
   delegate_to: "{{ manager_host }}"
+  become_user: "{{ hostvars[manager_host].builder }}"
   tags: signed
   fetch:
     src: "cawork/{{ tls_hostname }}_cert.pem"

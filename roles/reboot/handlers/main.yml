@@ -7,10 +7,6 @@
   changed_when: false
   listen: require reboot
 - name: wait for connectable
-  # variable ansible_host and ansible_port is set by Vagrant auto genrate inventory file
-  # so following line must be changed for environment
-  # local_action: wait_for host={{ ansible_host }} port={{ ansible_port | default(22) }} delay=10 search_regex=OpenSSH state=started
-  # become: False
   wait_for_connection:
     delay: 30
   tags: reboot

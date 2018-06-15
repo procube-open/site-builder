@@ -6,13 +6,13 @@
     mode: 0755
   with_items: "{{ groups['targets'] }}"
 - name: add backup script
-  become: True
+  become_user: root
   copy:
     src: site-backup.sh
     dest: /usr/bin/site-backup.sh
     mode: 0755
 - name: add backup service
-  become: True
+  become_user: root
   copy:
     src: "{{item}}"
     dest: /usr/lib/systemd/system
@@ -21,16 +21,16 @@
     - backup@.service
     - backup@.timer
 - name: enable and start backup timer service
-  become: True
+  become_user: root
   service:
     name: "backup@{{ builder }}.timer"
-    state: started
     enabled: yes
+  notify: require reboot
 
 - name: "backup script template"
   copy:
     src: "{{ item }}"
-    dest: "./site-builder/"
+    dest: "~/site-builder/"
     mode: 0644
   with_items:
     - doBackup.sh

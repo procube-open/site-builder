@@ -1,0 +1,21 @@
+---
+- name: create partition
+  parted:
+    device: "{{ drbd_device_name | default ('/dev/sdb') }}"
+    number: "{{ drbd_device_number | default ('1') }}"
+    part_start: "{{ drbd_device_part_start }}"
+    flags: [ lvm ]
+    state: present
+- name: create volume group
+  lvg:
+    vg: drbdpool
+    pvs: "{{ drbd_device_name | default ('/dev/sdb') }}{{ drbd_device_number | default ('1') }}"
+- name: gather drbd status
+  shell: drbdadm status
+  changed_when: False
+  register: drbd_status
+- name: initialize drbd master
+  shell: "yes yes | drbdmanage init {{ private_ip }}"
+  register: drbd_initialize
+  when: inventory_hostname == master_node and ('No currently configured DRBD found' in drbd_status.stdout)
+  # notify: require reboot

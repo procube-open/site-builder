@@ -1,5 +1,0 @@
----
-all:
-  hosts:
-    localhost:
-      ansible_python_interpreter: /home/{{ builder }}/ansible/bin/python

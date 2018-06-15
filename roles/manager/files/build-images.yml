@@ -2,6 +2,7 @@
 - name: build images
   gather_facts: False
   hosts: images
+  serial: 1
   vars_files:
     - ../config/vars/main.yml
 
@@ -12,7 +13,7 @@
     run_once: True
     docker_login:
       registry: "{{ registry }}"
-      username: "{{ docker_user }}"
+      username: "{{ docker_login_user }}"
       password: "{{ lookup('file', '../registry/registry_password') }}"
       email: "{{ docker_login_email }}"
 
@@ -21,7 +22,8 @@
     connection: local
     set_fact:
       ansible_connection: docker
-      image_tag: "{{registry}}/{{project_name}}/{{ inventory_hostname }}:1"
+      image_tag: "{{registry}}/{{project_name}}/{{ inventory_hostname }}:{{ image_tag | default('latest')}}"
+      ansible_host: "{{ inventory_hostname }}"
 
   - name: invoke container
     delegate_to: localhost
@@ -33,13 +35,17 @@
       env: "{{ env | default(omit) }}"
       privileged: "{{ privileged | default(omit) }}"
       volumes: "{{ volumes | default(omit) }}"
+      entrypoint: "{{ entrypoint | default(omit) }}"
+      working_dir: "{{ working_dir | default(omit) }}"
+      command: "{{ command | default(omit) }}"
+      stop_signal: "{{ stop_signal | default(omit) }}"
 
   - name: play book
     include_role:
-      name: "{{ role }}"
+      name: "{{ role_item }}"
     with_items: "{{ roles | default([]) }}"
     loop_control:
-      loop_var: role
+      loop_var: role_item
 
   - name: commit image
     delegate_to: localhost

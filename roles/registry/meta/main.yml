@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  author: Mitsuru Nakakawaji
+  description: Docker registry with web frontend on docker swarm environment Dango.
+  company: Procube Co.,Ltd.
+  license: MIT
+  min_ansible_version: 2.5
+  platforms:
+  - name: EL
+    versions:
+    - "7"
+  galaxy_tags:
+    - registry
+    - docker
+    - frontend
+  dependencies:
+    - role: Dango

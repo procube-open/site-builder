@@ -27,7 +27,7 @@
   hostname:
     name: "{{ inventory_hostname }}"
 - name: "gather if aws or not"
-  stat: path=/etc/cloud/cloud.cfg
+  stat: path=/etc/cloud
   register: cloud_cfg
 - name: preserve hostname setting for ec2
   lineinfile:
@@ -59,26 +59,3 @@
     regexp: "^ChallengeResponseAuthentication"
     insertafter: "^#ChallengeResponseAuthentication"
     line: "ChallengeResponseAuthentication no"
-- name: prohibit login as root for sshd
-  lineinfile:
-    dest: /etc/ssh/sshd_config
-    regexp: "^PermitRootLogin"
-    insertafter: "^#PermitRootLogin"
-    line: "PermitRootLogin no"
-- name: "Allow {{administrator}} to have passwordless sudo"
-  template:
-    src: sudoer.j2
-    dest: "/etc/sudoers.d/{{administrator}}"
-- name: gather ssh host keys
-  shell: cat /etc/ssh/ssh_host_ecdsa_key.pub
-  changed_when: False
-  register: ssh_host_key
-- name: set known host
-  become: False
-  blockinfile:
-    block: "{{ hostvars[item].inventory_hostname }},{{ hostvars[item].private_ip }} {{ hostvars[item].ssh_host_key.stdout }}"
-    dest: ".ssh/known_hosts"
-    mode: 0600
-    create: True
-    marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item }}"
-  with_items: "{{ play_hosts }}"
