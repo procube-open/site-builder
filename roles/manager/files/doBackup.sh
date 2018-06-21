@@ -16,7 +16,12 @@ dlg-{{ inventory_hostname }}
 # for service {{ backup_script.service }}
 backup_file="backup-{{ backup_script.service }}-$(date +%Y%m%d%H%M%S).{{ backup_script.ext }}"
 message "START backup {{ backup_script.service }} into $backup_file"
+{% if backup_script.backup_file is defined %}
+if docker exec {{ backup_script.container }} {{ backup_script.backup_command }} ; then
+  docker cp {{ backup_script.container }}:{{ backup_script.backup_file }} $backup_file
+{% else %}
 if docker exec {{ backup_script.container }} {{ backup_script.backup_command }} > "$backup_file"; then
+{% endif %}
   message "END backup for {{ backup_script.service }} from $backup_file"
   message "LINK backup-{{ backup_script.service }}-latest to $backup_file"
   rm -f "backup-{{ backup_script.service }}-latest"
