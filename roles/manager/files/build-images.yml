@@ -39,6 +39,7 @@
       working_dir: "{{ working_dir | default(omit) }}"
       command: "{{ command | default(omit) }}"
       stop_signal: "{{ stop_signal | default(omit) }}"
+      user: "{{ user | default(omit) }}"
 
   - name: play book
     include_role:

@@ -1,0 +1,86 @@
+version: '3'
+services:
+  postgres:
+    image: "postgres:9.6"
+    environment:
+      POSTGRES_USER: awx
+      POSTGRES_PASSWORD: "{{ awx_password }}"
+      POSTGRES_DB: awx
+    volumes:
+      - /home/centos/pgdata:/var/lib/postgresql/data
+    restart: always
+
+  rabbitmq:
+    image: "rabbitmq:3"
+    environment:
+      RABBITMQ_DEFAULT_VHOST: awx
+    restart: always
+
+  memcached:
+    image: "memcached:alpine"
+    restart: always
+
+  awx_web:
+    image: "ansible/awx_web:latest"
+    links:
+      - rabbitmq
+      - memcached
+      - postgres
+    ports:
+      - "8052:8052"
+    hostname: awxweb
+    extra_hosts:
+{% for host in groups['targets']|map('extract', hostvars) %}
+      - "{{host.inventory_hostname}}:{{host.private_ip}}"
+{% endfor %}
+      - "{{registry_fqdn}}:{{hostvars[manager_host].private_ip}}"
+    user: root
+    environment:
+      SECRET_KEY: "{{ awx_password }}"
+      DATABASE_USER: awx
+      DATABASE_PASSWORD: "{{ awx_password }}"
+      DATABASE_NAME: awx
+      DATABASE_PORT: 5432
+      DATABASE_HOST: postgres
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_VHOST: awx
+      MEMCACHED_HOST: memcached
+      MEMCACHED_PORT: 11211
+    volumes:
+      - /home/centos:/var/lib/awx/projects
+    restart: always
+
+  awx_task:
+    image: "ansible/awx_task:latest"
+    links:
+      - rabbitmq
+      - memcached
+      - awx_web:awxweb
+      - postgres
+    hostname: awx
+    extra_hosts:
+{% for host in groups['targets']|map('extract', hostvars) %}
+      - "{{host.inventory_hostname}}:{{host.private_ip}}"
+{% endfor %}
+      - "{{registry_fqdn}}:{{hostvars[manager_host].private_ip}}"
+    user: root
+    environment:
+      SECRET_KEY: "{{ awx_password }}"
+      DATABASE_USER: awx
+      DATABASE_PASSWORD: "{{ awx_password }}"
+      DATABASE_NAME: awx
+      DATABASE_PORT: 5432
+      DATABASE_HOST: postgres
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_VHOST: awx
+      MEMCACHED_HOST: memcached
+      MEMCACHED_PORT: 11211
+    volumes:
+      - /home/centos:/var/lib/awx/projects
+    restart: always

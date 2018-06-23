@@ -108,3 +108,5 @@
 
   roles:
     - registry
+    - role: awx
+      when: install_awx

@@ -60,7 +60,7 @@
       region: "{{ aws.region }}"
       vpc_subnet_id: "{{ (subnet.results | selectattr('item.item.name', 'equalto', hostvars[item].vpc) | list)[0].subnet.id }}"
       image: "{{ aws.image_id }}"
-      instance_type: "{{ aws.host_size }}"
+      instance_type: "{{ hostvars[item].host_size }}"
       key_name: awsroot
       volumes:
         - device_name: /dev/sda1

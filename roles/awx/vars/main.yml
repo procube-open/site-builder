@@ -1,0 +1,3 @@
+---
+# credentials
+awx_password: "{{ lookup('password', '../awx_password length=15') }}"

@@ -11,6 +11,13 @@
     dest: "~/"
   when: git is not defined
 
+- name: import roles
+  tags: copy-config
+  copy:
+    src: "roles"
+    dest: "~/site-builder/"
+  when: import_roles | default(false)
+
 - import_tasks: install-builder.yml
   tags: bulder
 

@@ -1,0 +1,28 @@
+---
+- name: "setup awx - create dir"
+  file:
+    path: "awx"
+    state: directory
+    mode: 0755
+
+- name: "install awx docker-compose.yml"
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: 0755
+  with_items:
+    - src: awx.yml.j2
+      dest: "~/awx/docker-compose.yml"
+
+- name: set ansible_python_interpreter
+  set_fact:
+    ansible_python_interpreter: "/home/{{builder}}/compose/bin/python"
+
+- name: compose up awx container
+  docker_service:
+    project_src: "awx"
+    docker_host: "tcp://{{ inventory_hostname }}:2376"
+    tls: yes
+    cacert_path: ".docker/ca.pem"
+    cert_path: ".docker/cert.pem"
+    key_path:  ".docker/key.pem"

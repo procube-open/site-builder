@@ -12,7 +12,7 @@
     connection: local
     # become_user: "{{ safe_builder }}"
     file:
-      path: "~/hosts.d/{{ inventory_hostname }}/{{ item }}"
+      path: "../hosts.d/{{ inventory_hostname }}/{{ item }}"
       state: directory
       mode: 0755
     with_items: "{{ services | default([])}}"
@@ -33,7 +33,7 @@
     # become_user: "{{ safe_builder }}"
     template:
       src: "../config/services/{{ item }}/docker-compose.yml"
-      dest: "~/hosts.d/{{ inventory_hostname }}/{{ item }}/docker-compose.yml"
+      dest: "../hosts.d/{{ inventory_hostname }}/{{ item }}/docker-compose.yml"
     with_items: "{{ services | default([])}}"
 
   - name: Log into private registry
@@ -52,7 +52,7 @@
   - name: compose up containers
     delegate_to: "dlg-{{ inventory_hostname }}"
     docker_service:
-      project_src: "~/hosts.d/{{ inventory_hostname }}/{{ item }}"
+      project_src: "../hosts.d/{{ inventory_hostname }}/{{ item }}"
       docker_host: "tcp://{{ inventory_hostname }}:2376"
       timeout: 120
       tls: yes
@@ -62,9 +62,10 @@
     with_items: "{{ services | default([])}}"
 
   - name: install backup shell script
+    connection: local
     template:
       src: "do{{ item }}.sh"
-      dest: "~/hosts.d/{{ inventory_hostname }}/do{{ item }}"
+      dest: "../hosts.d/{{ inventory_hostname }}/do{{ item }}"
       mode: 0755
     with_items:
       - Backup
