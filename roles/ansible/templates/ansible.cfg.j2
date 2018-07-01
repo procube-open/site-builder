@@ -1,3 +1,7 @@
 [defaults]
-inventory={{ site_root | default("~") }}/config/hosts
-roles_path={{ site_root | default("~") }}/config/roles:roles
+inventory={{ site_root | default("~/config") }}/hosts
+roles_path={{ site_root | default("~/config") }}/roles:{{ site_root | default("~") }}/site-builder/roles
+forks=15
+pipelining = True
+[ssh_connection]
+ssh_args = -o ControlMaster=auto -o ControlPersist=20s

@@ -1,6 +1,5 @@
 ---
 - name: "install aws cli and boto"
-  become: False
   pip:
     name: "{{ item }}"
     state: latest
@@ -10,18 +9,16 @@
     - boto3
     - boto
 - name: "create directories"
-  become: False
   file:
-    dest: "{{ item }}"
+    path: "~/{{ item }}"
     state: directory
   with_items:
     - ".aws/"
     - ".resource/"
 - name: "copy configuration and credential files"
-  become: False
   template:
     src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
+    dest: "~/{{ item.dest }}"
     mode: 0600
   with_items:
     - src: aws_cli_config.j2
@@ -29,37 +26,49 @@
     - src: aws_cli_credentials.j2
       dest: ".aws/credentials"
 - name: "put private key"
-  become: False
   copy:
-    content: "{{ (lookup('template', '../credentials.yml') | from_yaml).builder_id_rsa }}"
-    dest: ".ssh/id_rsa"
+    content: "{{ builder_id_rsa }}"
+    dest: "~/.ssh/id_rsa"
     mode: 0600
+  when: aws_builder | default(False)
 - name: "Setup commands"
-  become: false
   blockinfile:
     dest: ~/.bashrc
     insertafter: BOF
     state: present
-    block: "alias {{ item.name }}='{{ item.command }}'"
+    block: |
+      function {{ item.name }}() {
+      {% if item.pre_command is defined %}
+        {{ item.pre_command}}
+      {% endif %}
+        {{ item.command }} "$@"
+      {% if item.post_command is defined %}
+        {{ item.post_command}}
+      {% endif %}
+      }
     marker: "# {mark} ANSIBLE MANAGED BLOCK {{item.name}}"
+  when: aws_builder | default(False)
   with_items:
     - name: buildAws
-      command: "(cd {{ site_root }}; ansible-playbook site-builder/build-aws.yml; connectAws)"
+      command: "ansible-playbook {{ site_root }}/site-builder/playbooks/build-aws.yml"
+      post_command: connectAws
     - name: buildHosts
-      command: "(cd {{ site_root }}; ansible-playbook site-builder/site.yml)"
+      command: "ansible-playbook {{ site_root }}/site-builder/playbooks/site.yml"
     - name: connectAws
-      command: "startEc2; (cd {{ site_root }}; ansible-playbook -i config/hosts -e mode=present ~/.resource/connect_aws.yml)"
+      pre_command: startEc2
+      command: ansible-playbook -e mode=present ~/.resource/connect_aws.yml
     - name: disconnectAws
-      command: "(cd {{ site_root }}; ansible-playbook -i config/hosts -e mode=absent ~/.resource/connect_aws.yml)"
+      command: ansible-playbook -e mode=absent ~/.resource/connect_aws.yml
     - name: stopEc2
-      command: "disconnectAws;(cd {{ site_root }}; ansible-playbook -i config/hosts ~/.resource/stop_ec2.yml)"
+      pre_command: disconnectAws
+      command: ansible-playbook ~/.resource/stop_ec2.yml
     - name: startEc2
-      command: "(cd {{ site_root }}; ansible-playbook -i config/hosts -e target_state=running ~/.resource/stop_ec2.yml)"
+      command: ansible-playbook -e target_state=running ~/.resource/stop_ec2.yml
     - name: restartEc2
-      command: "(cd {{ site_root }}; ansible-playbook -i config/hosts -e target_state=restarted ~/.resource/stop_ec2.yml)"
+      command: ansible-playbook -e target_state=restarted ~/.resource/stop_ec2.yml
     - name: terminateEc2
-      command: "disconnectAws;(cd {{ site_root }}; ansible-playbook -i config/hosts -e target_state=absent ~/.resource/stop_ec2.yml)"
+      pre_command: disconnectAws
+      command: ansible-playbook -e target_state=absent ~/.resource/stop_ec2.yml
     - name: destroyAws
-      command: "terminateEc2;(cd {{ site_root }}; ansible-playbook -i config/hosts ~/.resource/destroy_vpc.yml)"
-    - name: synctime
-      command: sudo systemctl restart chronyd && sudo chronyc makestep
+      pre_command: terminateEc2
+      command: ansible-playbook ~/.resource/destroy_vpc.yml

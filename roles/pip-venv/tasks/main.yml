@@ -13,7 +13,7 @@
     - python-virtualenv
 - name: create directory for virtualenv
   file:
-    dest: "{{ item }}"
+    path: "~/{{ item }}"
     state: directory
     mode: 0775
   with_items: "{{ safe_venvs }}"
@@ -22,21 +22,21 @@
   # Aborting, target uses selinux but python bindings (libselinux-python) aren't installed!
   # https://github.com/trailofbits/algo/issues/356
   # command: "virtualenv --system-site-packages {{ item }}"
-  command: "virtualenv {{ item }}"
+  command: "virtualenv ~/{{ item }}"
   args:
-    creates: "{{ item }}/bin/activate"
+    creates: "~/{{ item }}/bin/activate"
   with_items: "{{ safe_venvs }}"
 - name: gather pip info
-  shell: "{{ item }}/bin/pip show pip | awk '/^Version/{print $2}'"
+  shell: "~/{{ item }}/bin/pip show pip | awk '/^Version/{print $2}'"
   register: pip_version
   changed_when: False
   with_items: "{{ safe_venvs }}"
 - name: "upgrade pip in virtual env {{ safe_venvs }}"
-  shell: "{{ item }}/bin/pip install --upgrade pip setuptools"
+  shell: "~/{{ item }}/bin/pip install --upgrade pip setuptools"
   when: (pip_version.results | selectattr('item', 'equalto', item) | list)[0].stdout is version('10.0', '<')
   with_items: "{{ safe_venvs }}"
 - name: setup auto enter virtualenv at login
   lineinfile:
-    path: ".bashrc"
+    path: "~/.bashrc"
     line: ". ~/{{ safe_venvs[0] }}/bin/activate"
   when: safe_venvs | length

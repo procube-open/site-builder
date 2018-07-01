@@ -7,8 +7,8 @@
 - name: copy config
   tags: copy-config
   copy:
-    src: "../config"
-    dest: "~/"
+    src: "../"
+    dest: "~/config"
   when: git is not defined
 
 - name: import roles

@@ -1,12 +1,14 @@
 ---
 - hosts: managers
   connection: local
-  vars_files:
-    - ../config/vars/main.yml
-  vars:
-    ansible_python_interpreter: "/home/vagrant/ansible/bin/python"
 
   tasks:
+  - name: load variables from parent vars directory
+    include_vars: "{{ item }}"
+    with_fileglob: "../../vars/*.yml"
+  - name: set ansible_python_interpreter
+    set_fact:
+      ansible_python_interpreter: "/home/vagrant/ansible/bin/python"
   - name: construct VPC
     ec2_vpc_net:
       name: "{{ item.name }}"
@@ -75,22 +77,23 @@
       count_tag:
         Name: "{{ item }}"
       exact_count: 1
+      # state: running
       instance_tags:
         Name: "{{item}}"
     with_items: "{{ groups['targets'] }}"
     register: ec2
   - name: "Install destruct VPC playbook"
     template:
-      src: aws/destroy_vpc.j2.yml
+      src: ../aws/destroy_vpc.j2.yml
       dest: ~/.resource/destroy_vpc.yml
       mode: 0644
   - name: "Install stop all ec2 instance playbook"
     template:
-      src: aws/stop_ec2.j2.yml
+      src: ../aws/stop_ec2.j2.yml
       dest: ~/.resource/stop_ec2.yml
       mode: 0644
   - name: "Install connect aws playbook"
     template:
-      src: aws/connect_aws.j2.yml
+      src: ../aws/connect_aws.j2.yml
       dest: ~/.resource/connect_aws.yml
       mode: 0644

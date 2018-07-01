@@ -1,6 +1,14 @@
 ---
 # common utiility packages.
-
+- name: Disable yum-fastestmirror
+  lineinfile: >
+    dest="/etc/yum/pluginconf.d/fastestmirror.conf"
+    line="enabled=0"
+    state=present
+    regexp="^#?enabled="
+    insertafter=EOF
+    create=yes
+    owner=root group=root mode=0644
 - name: install packages
   yum: >
     name={{ item }}

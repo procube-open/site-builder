@@ -20,7 +20,7 @@
 - name: "install playbooks - create directory"
   become_user: "{{ builder }}"
   file:
-    path: "site-builder"
+    path: "site-builder/playbooks"
     state: directory
     mode: 0755
 
@@ -28,11 +28,12 @@
   become_user: "{{ builder }}"
   copy:
     src: "{{ item }}"
-    dest: "~/site-builder/"
+    dest: "~/site-builder/playbooks"
     mode: 0644
   with_items:
     - build-images.yml
     - deploy-services.yml
+    - undeploy-services.yml
 
 - name: "setup docker connection - create dir"
   become_user: "{{ builder }}"
@@ -52,13 +53,22 @@
     marker: "# {mark} ANSIBLE MANAGED BLOCK dlg shortcut {{item}}"
   with_items: "{{ groups['targets'] }}"
 
+- name: "setup docker connection - shortcut revert"
+  become_user: "{{ builder }}"
+  blockinfile:
+    path: .bashrc
+    insertafter: BOF
+    state: present
+    block: "alias revert-dlg='export DOCKER_HOST=;export DOCKER_TLS_VERIFY=;. ~/ansible/bin/activate; cd ~'"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK dlg shortcut revert dlg"
+
 - name: "install private key for ssh to target machines"
   become_user: "{{ builder }}"
   copy:
-    content: "{{ (lookup('template', '../credentials.yml') | from_yaml).builder_id_rsa }}"
+    content: "{{ builder_id_rsa }}"
     dest: "~/.ssh/id_rsa"
     mode: 0600
-  when: (lookup('template', '../credentials.yml') | from_yaml).builder_id_rsa is defined
+  when: builder_id_rsa is defined
 
 - name: "Setup commands"
   become_user: "{{ builder }}"
@@ -66,10 +76,21 @@
     dest: .bashrc
     insertafter: BOF
     state: present
-    block: "alias {{ item.name }}='{{ item.command }}'"
+    block: |
+      function {{ item.name }}() {
+      {% if item.pre_command is defined %}
+        {{ item.pre_command}}
+      {% endif %}
+        {{ item.command }} "$@"
+      {% if item.post_command is defined %}
+        {{ item.post_command}}
+      {% endif %}
+      }
     marker: "# {mark} ANSIBLE MANAGED BLOCK {{item.name}}"
   with_items:
     - name: buildImages
-      command: "(cd ~; ansible-playbook site-builder/build-images.yml)"
+      command: ansible-playbook ~/site-builder/playbooks/build-images.yml
     - name: deployServices
-      command: "(cd ~; ansible-playbook site-builder/deploy-services.yml)"
+      command: ansible-playbook ~/site-builder/playbooks/deploy-services.yml
+    - name: undeployServices
+      command: ansible-playbook ~/site-builder/playbooks/undeploy-services.yml

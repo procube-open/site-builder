@@ -9,14 +9,6 @@
   - name: load variables from parent vars directory
     include_vars: "{{ item }}"
     with_fileglob: "../../config/vars/*.yml"
-  - name: "setup docker compose file - create dir"
-    connection: local
-    # become_user: "{{ safe_builder }}"
-    file:
-      path: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
-      state: directory
-      mode: 0755
-    with_items: "{{ services | default([])}}"
 
   - name: add host for delegator
     add_host:
@@ -54,8 +46,10 @@
     delegate_to: "dlg-{{ inventory_hostname }}"
     docker_service:
       project_src: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
+      state: absent
+      remove_images: all
+      remove_volumes: True
       docker_host: "tcp://{{ inventory_hostname }}:2376"
-      pull: True
       timeout: 120
       tls: yes
       cacert_path: "../../.docker/ca.pem"
@@ -63,13 +57,8 @@
       key_path:  "../../.docker/key.pem"
     with_items: "{{ services | default([])}}"
 
-  - name: install backup shell script
+  - name: "delete host directory"
     connection: local
-    template:
-      src: "do{{ item }}.sh"
-      dest: "../hosts.d/{{ inventory_hostname }}/do{{ item }}"
-      mode: 0755
-    with_items:
-      - Backup
-      - Restore
-    when: backup_scripts is defined
+    file:
+      path: "../../hosts.d/{{ inventory_hostname }}"
+      state: absent

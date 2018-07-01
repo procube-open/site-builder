@@ -1,18 +1,20 @@
 - name: build mother VM
-  hosts: mother
+  hosts: all
   become: True
-  vars_files:
-    - ../config/vars/main.yml
 
   roles:
+    - vars
     - base
     - iptables
     - vagrant
-    - ntp-client
+    - role: ntp-client
+      when: ntp_servers is defined
     - role: pip-venv
       become_user: "{{ administrator }}"
     - role: ansible
       become_user: "{{ administrator }}"
     - role: aws
       become_user: "{{ administrator }}"
-    - reboot
+      aws_builder: True
+    - role: reboot
+      tags: reboot

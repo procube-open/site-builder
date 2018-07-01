@@ -1,0 +1,4 @@
+---
+- name: load variables from parent vars directory
+  include_vars: "{{ item }}"
+  with_fileglob: "../../../vars/*.yml"

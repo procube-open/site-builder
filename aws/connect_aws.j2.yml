@@ -17,7 +17,7 @@
     when: safe_mode == 'present'
   - name: build rule list
     set_fact:
-      inbound_rules:
+      inbound_rules_myip:
       - proto: all
         group_name: default
       - proto: tcp #ssh
@@ -44,7 +44,7 @@
 {% endraw %}
       region: "{{ aws.region }}"
 {% raw %}
-      rules: "{{ inbound_rules | default([]) }}"
+      rules: "{{ inbound_rules | default([]) }} + {{ inbound_rules_myip | default([]) }}"
     register: group
     with_items:
 {% endraw %}

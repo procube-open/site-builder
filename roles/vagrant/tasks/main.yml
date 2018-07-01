@@ -2,7 +2,7 @@
 - name: setup self private_key
   become: false
   copy:
-    src: vagrant/.vagrant/machines/mother/virtualbox/private_key
+    src: "../vagrant/.vagrant/machines/{{mother_name}}/virtualbox/private_key"
     dest: ~/.ssh/id_vagrant
     mode: 0600
 - name: set .ssh/config
@@ -19,3 +19,13 @@
         User vagrant
         IdentityFile ~/.ssh/id_vagrant
         StrictHostKeyChecking no
+- name: setup synctime command
+  become: false
+  blockinfile:
+    dest: ~/.bashrc
+    insertafter: BOF
+    state: present
+    block: |
+      alias synctime='sudo systemctl restart chronyd && sudo chronyc makestep'
+      synctime
+    marker: "# {mark} ANSIBLE MANAGED BLOCK synctime command"

@@ -2,21 +2,22 @@ require 'yaml'
 
 Vagrant.configure("2") do |config|
   vars = YAML.load_file '../../vagrant.yml'
-  ENV['ANSIBLE_ROLES_PATH'] = "../../config/roles:../roles"
+  ENV['ANSIBLE_ROLES_PATH'] = "../roles"
   config.vm.box = "centos/7"
-  config.vm.define "mother" do |mother|
+  config.vm.define "#{vars['mother_name']}" do |mother|
     mother.vm.provider "virtualbox" do |v|
-      v.name = "mother"
+      v.name = "#{vars['mother_name']}"
     end
     mother.vm.network "private_network", ip: "#{vars['mother_ip']}", netmask: "#{vars['mother_netmask']}"
-    mother.vm.hostname = "mother"
+    mother.vm.hostname = "#{vars['mother_name']}"
     mother.vm.synced_folder "../..", "/vagrant", type: "#{vars['sync_type']}"
     mother.vm.provision "ansible" do |ansible|
       ansible.raw_arguments  = ["--skip-tags", "reboot"]
-      ansible.playbook = "../mother.yml"
+      ansible.playbook = "../playbooks/mother.yml"
       ansible.extra_vars = {
         administrator: "vagrant",
         site_root: "/vagrant",
+        mother_name: "#{vars['mother_name']}",
         private_ip: "#{vars['mother_ip']}",
         internal_net_if: "eth1",
         internal_net_addr: "#{vars['mother_network']}",

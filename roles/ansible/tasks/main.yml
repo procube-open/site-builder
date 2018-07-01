@@ -9,7 +9,7 @@
     - requests
     - ansible
     - docker-py
-- name: "copy configuration files"
+- name: "setup ansible configuration files"
   template:
     src: ansible.cfg.j2
     dest: "~/.ansible.cfg"

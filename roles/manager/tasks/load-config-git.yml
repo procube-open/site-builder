@@ -13,7 +13,7 @@
 
 - name: "install private key for git"
   copy:
-    content: "{{ (lookup('template', '../credentials.yml') | from_yaml).git_id_rsa }}"
+    content: "{{ git_id_rsa }}"
     dest: "~/.ssh/git_id_rsa"
     mode: 0600
 
@@ -40,10 +40,11 @@
 
 - name: load site configuration
   git:
-    dest: "./config"
+    dest: "~/config"
+    # dest: "~/{{ (git.path | basename | splitext)[0] }}"
     repo: "{{ git.user }}@{{ git.fqdn }}:{{ git.path }}"
     version: "{{ git.version }}"
 - name: copy credentials.yml
   copy:
-    src: ../credentials.yml
-    dest: "~/"
+    src: ../../../vars/credentials.yml
+    dest: "~/config/vars/"

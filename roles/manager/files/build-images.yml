@@ -3,10 +3,11 @@
   gather_facts: False
   hosts: images
   serial: 1
-  vars_files:
-    - ../config/vars/main.yml
 
   tasks:
+  - name: load variables from parent vars directory
+    include_vars: "{{ item }}"
+    with_fileglob: "../../config/vars/*.yml"
   - name: Log into private registry
     delegate_to: localhost
     connection: local
@@ -14,7 +15,7 @@
     docker_login:
       registry: "{{ registry }}"
       username: "{{ docker_login_user }}"
-      password: "{{ lookup('file', '../registry/registry_password') }}"
+      password: "{{ lookup('file', '../../registry/registry_password') }}"
       email: "{{ docker_login_email }}"
 
   - name: set connection property for images

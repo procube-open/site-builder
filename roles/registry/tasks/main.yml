@@ -39,6 +39,7 @@
     project_src: "registry"
     docker_host: "tcp://{{ inventory_hostname }}:2376"
     tls: yes
+    ssl_version: "TLSv1_2"
     cacert_path: ".docker/ca.pem"
     cert_path: ".docker/cert.pem"
     key_path:  ".docker/key.pem"
