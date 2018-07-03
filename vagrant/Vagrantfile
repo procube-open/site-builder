@@ -24,9 +24,11 @@ Vagrant.configure("2") do |config|
         internal_net_cidr: "#{vars['mother_netmask']}"
       }
     end
-    # reboot by reboot command in the host cause unmount /vagrant nfs
-    # so, we use vagrant-reload plugin
-    mother.vm.provision :reload
+    if "#{vars['sync_type']}" == "nfs"
+      # reboot by reboot command in the host cause unmount /vagrant nfs
+      # so, we use vagrant-reload plugin
+      mictest.vm.provision :reload
+    end
     # mother.vm.provision "shell", privileged: false, inline: <<-SHELL
     #   shopt -s expand_aliases
     #   source ~/.bashrc

@@ -1,6 +1,6 @@
 ---
 - name: load config from git
-  tags: load-config
+  tags: copy-config
   import_tasks: load-config-git.yml
   when: git is defined
 
@@ -9,10 +9,19 @@
   copy:
     src: "../"
     dest: "~/config"
-  when: git is not defined
+  when: git is not defined and site_root is not defined
+
+- name: link config
+  tags: copy-config
+  file:
+    src: "{{ site_root }}"
+    dest: "~/config"
+    state: link
+  when: git is not defined and site_root is defined
+
 
 - name: import roles
-  tags: copy-config
+  tags: import-roles
   copy:
     src: "roles"
     dest: "~/site-builder/"

@@ -26,6 +26,15 @@
       image_tag: "{{registry}}/{{project_name}}/{{ inventory_hostname }}:{{ image_tag | default('latest')}}"
       ansible_host: "{{ inventory_hostname }}"
 
+  - name: remove previous from-image
+    delegate_to: localhost
+    connection: local
+    shell: |
+      docker rmi "{{ from }}"
+    register: rmi_result
+    changed_when: rmi_result.rc == 0
+    failed_when: false
+
   - name: invoke container
     delegate_to: localhost
     connection: local
@@ -54,6 +63,7 @@
     connection: local
     shell: |
       docker stop "{{ inventory_hostname }}"
+      docker rmi -f "{{ image_tag }}"
       docker commit "{{ inventory_hostname }}" "{{ image_tag }}"
       docker rm "{{ inventory_hostname }}"
 

@@ -7,10 +7,12 @@
 
   tasks:
   - name: load variables from parent vars directory
+    tags: directories, networks, compose-up, compose-files, backup-restore
     include_vars: "{{ item }}"
     with_fileglob: "../../config/vars/*.yml"
   - name: "setup docker compose file - create dir"
     connection: local
+    tags: directories
     # become_user: "{{ safe_builder }}"
     file:
       path: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
@@ -19,6 +21,33 @@
     with_items: "{{ services | default([])}}"
 
   - name: add host for delegator
+    tags: networks
+    add_host:
+      hostname: "dlg-{{ item }}"
+      ansible_connection: local
+      enviroment:
+        DOCKER_HOST: "tcp://{{ item }}:2376"
+        DOCKER_TLS_VERIFY: 1
+      ansible_python_interpreter: "../../ansible/bin/python"
+    with_items: "{{ play_hosts }}"
+    changed_when: False
+
+  - name: create networks
+    delegate_to: "dlg-{{ inventory_hostname }}"
+    tags: networks
+    docker_network:
+      name: "{{ item.name }}"
+      driver: "{{ item.driver | default(omit) }}"
+      driver_options: "{{ item.driver_options | default(omit) }}"
+      docker_host: "tcp://{{ inventory_hostname }}:2376"
+      tls: yes
+      cacert_path: "../../.docker/ca.pem"
+      cert_path: "../../.docker/cert.pem"
+      key_path:  "../../.docker/key.pem"
+    with_items: "{{ networks | default([])}}"
+
+  - name: modify delegator to reset ansible_python_interpreter
+    tags: compose-up
     add_host:
       hostname: "dlg-{{ item }}"
       ansible_connection: local
@@ -31,6 +60,7 @@
 
   - name: "setup docker compose file"
     connection: local
+    tags: compose-files
     # become_user: "{{ safe_builder }}"
     template:
       src: "../../config/services/{{ item }}/docker-compose.yml"
@@ -39,6 +69,7 @@
 
   - name: Log into private registry
     delegate_to: "dlg-{{ inventory_hostname }}"
+    tags: compose-up
     docker_login:
       registry: "{{ registry }}"
       username: "{{ docker_login_user }}"
@@ -52,6 +83,7 @@
 
   - name: compose up containers
     delegate_to: "dlg-{{ inventory_hostname }}"
+    tags: compose-up
     docker_service:
       project_src: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
       docker_host: "tcp://{{ inventory_hostname }}:2376"
@@ -65,6 +97,7 @@
 
   - name: install backup shell script
     connection: local
+    tags: backup-restore
     template:
       src: "do{{ item }}.sh"
       dest: "../hosts.d/{{ inventory_hostname }}/do{{ item }}"

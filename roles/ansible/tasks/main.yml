@@ -1,14 +1,16 @@
 ---
 - name: install ansible and docker-py
   pip:
-    name: "{{ item }}"
+    name: "{{ item.name }}"
+    version: "{{ item.version | default(omit) }}"
     state: present
     virtualenv: "~/ansible"
   with_items:
-    - urllib3
-    - requests
-    - ansible
-    - docker-py
+    - name: urllib3
+    - name: requests
+    - name: ansible
+      version: 2.5.0
+    - name: docker-py
 - name: "setup ansible configuration files"
   template:
     src: ansible.cfg.j2

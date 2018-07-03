@@ -13,7 +13,8 @@
     - iptables
     - role: internal-network
       when: internal_net_if is defined
-    - users
+    - role: users
+      when: users is defined
     - strict-source-ip
     - reboot
 
