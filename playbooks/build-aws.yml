@@ -82,6 +82,16 @@
         Name: "{{item}}"
     with_items: "{{ groups['targets'] }}"
     register: ec2
+  - name: associate the elastic IP with instances
+    ec2_eip:
+      device_id: "{{ item.tagged_instances[0].id }}"
+      in_vpc: yes
+      release_on_disassociation: yes
+      region: "{{ aws.region }}"
+      public_ip: "{{ hostvars[item.item].eip }}"
+    register: eip
+    with_items: "{{ ec2.results }}"
+    when: hostvars[item.item].eip is defined
   - name: "Install destruct VPC playbook"
     template:
       src: ../aws/destroy_vpc.j2.yml
