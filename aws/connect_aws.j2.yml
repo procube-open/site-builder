@@ -8,6 +8,7 @@
 {% endraw %}
     manager_host: "{{ manager_host }}"
     registry_fqdn: "{{ registry_fqdn }}"
+    inbound_rules: "{{ inbound_rules | default([]) }}"
 {% raw %}
 
   tasks:
@@ -44,7 +45,7 @@
 {% endraw %}
       region: "{{ aws.region }}"
 {% raw %}
-      rules: "{{ inbound_rules | default([]) }} + {{ inbound_rules_myip | default([]) }}"
+      rules: "{{ inbound_rules }} + {{ inbound_rules_myip | default([]) }}"
     register: group
     with_items:
 {% endraw %}

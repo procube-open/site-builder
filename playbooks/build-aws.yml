@@ -82,6 +82,36 @@
         Name: "{{item}}"
     with_items: "{{ groups['targets'] }}"
     register: ec2
+  - debug: var=ec2
+  - name: Find ENIs created for Edge instances
+    ec2_eni_facts:
+      region: "{{ aws.region }}"
+      filters:
+        attachment.instance-id: "{{ item.tagged_instances[0].id }}"
+    with_items: "{{ ec2.results }}"
+    when: hostvars[item.item].secondary_ip is defined
+    register: secondary_ip_enis
+  - debug: var=secondary_ip_enis
+  - name: assign secondary ip
+    ec2_eni:
+      region: "{{ aws.region }}"
+      subnet_id: "{{ (secondary_ip_enis.results | selectattr('item.item', 'equalto', item) | list)[0].network_interfaces[0].subnet_id }}"
+      eni_id: "{{ (secondary_ip_enis.results | selectattr('item.item', 'equalto', item) | list)[0].network_interfaces[0].network_interface_id }}"
+      state: present
+      secondary_private_ip_addresses:
+        - "{{ hostvars[item].secondary_ip }}"
+    with_items: "{{ ec2.results | map(attribute='item') | list}}"
+    when: hostvars[item].secondary_ip is defined
+  - name: associate the elastic IP with instances
+    ec2_eip:
+      device_id: "{{ item.tagged_instances[0].id }}"
+      in_vpc: yes
+      release_on_disassociation: yes
+      region: "{{ aws.region }}"
+      public_ip: "{{ hostvars[item.item].eip }}"
+    register: eip
+    with_items: "{{ ec2.results }}"
+    when: hostvars[item.item].eip is defined
   - name: "Install destruct VPC playbook"
     template:
       src: ../aws/destroy_vpc.j2.yml

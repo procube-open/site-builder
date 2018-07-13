@@ -94,3 +94,5 @@
       command: ansible-playbook ~/site-builder/playbooks/deploy-services.yml
     - name: undeployServices
       command: ansible-playbook ~/site-builder/playbooks/undeploy-services.yml
+    - name: dbash
+      command: docker exec -it $1 /bin/bash -c "stty rows $(tput lines) cols $(tput cols) && export TERM=$TERM && exec bash"

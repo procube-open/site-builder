@@ -17,4 +17,4 @@
       become_user: "{{ administrator }}"
       aws_builder: True
     - role: reboot
-      tags: reboot
+      when: not (skip_reboot | default(False))
