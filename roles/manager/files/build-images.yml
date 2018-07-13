@@ -8,7 +8,7 @@
   - name: load variables from parent vars directory
     include_vars: "{{ item }}"
     with_fileglob: "../../config/vars/*.yml"
-  - name: Log into private registry
+  - name: login to private registry
     delegate_to: localhost
     connection: local
     run_once: True

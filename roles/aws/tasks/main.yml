@@ -31,6 +31,12 @@
     dest: "~/.ssh/id_rsa"
     mode: 0600
   when: aws_builder | default(False)
+- name: "setup secondary ip"
+  template:
+    src: ifcfg-eth0:0
+    dest: /etc/sysconfig/network-scripts/
+  when: secondary_ip is defined
+  notify: require reboot
 - name: "Setup commands"
   blockinfile:
     dest: ~/.bashrc
