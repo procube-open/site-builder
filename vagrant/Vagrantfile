@@ -16,7 +16,7 @@ Vagrant.configure("2") do |config|
       ansible.extra_vars = {
         administrator: "vagrant",
         site_root: "/vagrant",
-        skip_reboot: true,
+        skip_reboot: "#{vars['sync_type'] != 'rsync'}",
         mother_name: "#{vars['mother_name']}",
         private_ip: "#{vars['mother_ip']}",
         internal_net_if: "eth1",
@@ -24,8 +24,8 @@ Vagrant.configure("2") do |config|
         internal_net_cidr: "#{vars['mother_netmask']}"
       }
     end
-    if "#{vars['sync_type']}" == "nfs"
-      # reboot by reboot command in the host cause unmount /vagrant nfs
+    if "#{vars['sync_type']}" != "rsync"
+      # reboot by reboot command in the host cause unmount /vagrant when type=nfs or type=virtualbox
       # so, we use vagrant-reload plugin
       mother.vm.provision :reload
     end

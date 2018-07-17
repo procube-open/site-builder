@@ -1,0 +1,4 @@
+*.retry
+*.log
+ssh_config
+*_password
