@@ -3,7 +3,7 @@ services:
   registry_server:
     image: registry:2
     ports:
-      - "{{registry_port | default(5000)}}:5000"
+      - "{{private_ip}}:{{registry_port | default(5000)}}:5000"
     networks:
       - regnet
     environment:
@@ -30,7 +30,7 @@ services:
       REGISTRY_TRUST_ANY_SSL: "true"
       REGISTRY_BASIC_AUTH: "{{ (docker_login_user + ":" + registry_password) | b64encode }}"
     ports:
-      - "{{registry_frontend_port | default(8080)}}:8080"
+      - "{{private_ip}}:{{registry_frontend_port | default(8080)}}:8080"
     restart: always
 
 networks:

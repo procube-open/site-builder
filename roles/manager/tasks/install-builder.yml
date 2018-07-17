@@ -32,8 +32,11 @@
     mode: 0644
   with_items:
     - build-images.yml
+    - role.yml
     - deploy-services.yml
     - undeploy-services.yml
+    - doBackup.sh
+    - doRestore.sh
 
 - name: "setup docker connection - create dir"
   become_user: "{{ builder }}"
