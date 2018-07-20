@@ -11,6 +11,8 @@
     - name: ansible
       version: 2.5.0
     - name: docker-py
+    # for lookup('dig', ..)
+    - name: dnspython
 - name: "setup ansible configuration files"
   template:
     src: ansible.cfg.j2

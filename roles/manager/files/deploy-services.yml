@@ -100,7 +100,7 @@
     tags: backup-restore
     template:
       src: "do{{ item }}.sh"
-      dest: "../hosts.d/{{ inventory_hostname }}/do{{ item }}"
+      dest: "../../hosts.d/{{ inventory_hostname }}/do{{ item }}"
       mode: 0755
     with_items:
       - Backup
