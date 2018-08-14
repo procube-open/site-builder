@@ -1,26 +1,33 @@
 - name: Destroy VPC
   hosts: localhost
   connection: local
+  vars:
+    region: "{{ region }}"
+    subnets:
+{{ subnets | to_nice_yaml | indent(6, true) }}
+    vpcs:
+{{ vpcs | to_nice_yaml | indent(6, true) }}
+    vpc_id:
+{{ vpc_info.results | json_query('[*].{name: item.key, id: vpc.id}') | to_nice_yaml | indent(6, true) }}
+{% raw %}
   tasks:
   - name: Delete subnets
     ec2_vpc_subnet:
       state: absent
-      vpc_id: "{{ vpc_info.vpc.id }}"
-{% raw %}
-      cidr: "{{ item }}"
-{% endraw %}
-    with_items:
-{% for key, value in vpc.subnets.items() %}
-      - {{ value.cidr }}
-{% endfor %}
+      vpc_id: "{{ (vpc_id | selectattr('name', 'equalto', item.value.vpc) | list)[0].id }}"
+      cidr: "{{ item.value.cidr }}"
+    with_dict: "{{ subnets }}"
   - name: Delete VPC gateway
     ec2_vpc_igw:
-      vpc_id: "{{ vpc_info.vpc.id }}"
-      region: "{{ vpc.region }}"
+      vpc_id: "{{ item.id }}"
+      region: "{{ region }}"
       state: absent
+    with_items: "{{ vpc_id }}"
   - name: Delete VPC
     ec2_vpc_net:
       state: absent
-      name: "{{ vpc.name }}"
-      cidr_block: "{{ vpc.cidr }}"
-      region: "{{ vpc.region }}"
+      name: "{{ item.key }}"
+      cidr_block: "{{ item.value.cidr }}"
+      region: "{{ region }}"
+    with_dict: "{{ vpcs }}"
+{% endraw %}

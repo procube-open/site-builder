@@ -11,47 +11,52 @@
     with_fileglob: "{{ site_root }}/vars/*.yml"
   - name: construct VPC
     ec2_vpc_net:
-      name: "{{ vpc.name }}"
+      name: "{{ item.key }}"
       state: present
-      cidr_block: "{{ vpc.cidr }}"
-      region: "{{ vpc.region }}"
+      cidr_block: "{{ item.value.cidr }}"
+      region: "{{ region }}"
+    with_dict: "{{ vpcs }}"
     register:  vpc_info
   - name: Setup internet gateway for VPC
     ec2_vpc_igw:
-      vpc_id: "{{ vpc_info.vpc.id }}"
-      region: "{{ vpc.region }}"
+      vpc_id: "{{ item.vpc.id }}"
+      region: "{{ region }}"
       state: present
       tags:
-        Name: gateway for {{ vpc.name }}
+        Name: "gateway for {{ item.item.key }}"
     register: igw
+    with_items: "{{ vpc_info.results }}"
   - name: Setup subnet for VPC
     ec2_vpc_subnet:
       state: present
-      az: "{{ item.value.zone | default(vpc.default_zone) }}"
-      vpc_id: "{{ vpc_info.vpc.id }}"
+      az: "{{ item.value.zone | default(zone) }}"
+      vpc_id: "{{ (vpc_info.results | selectattr('item.key', 'equalto', item.value.vpc) | list)[0].vpc.id }}"
       cidr: "{{ item.value.cidr }}"
       resource_tags:
         Name: "subnet_{{ item.key }}"
-    with_dict: "{{ vpc.subnets }}"
-    register: subnet
-  - name: gather default root table facts
+    with_dict: "{{ subnets }}"
+    register: subnets_info
+  - name: gather default route table facts
     ec2_vpc_route_table_facts:
-      region: "{{ vpc.region }}"
+      region: "{{ region }}"
       filters:
-        vpc-id: "{{ vpc_info.vpc.id }}"
+        vpc-id: "{{ item.vpc.id }}"
     register: rtb
+    with_items: "{{ vpc_info.results }}"
+  - debug: var=igw
   - name: Set up public subnet route table
     ec2_vpc_route_table:
-      vpc_id: "{{ vpc_info.vpc.id }}"
-      route_table_id: "{{ rtb.route_tables[0].id }}"
-      region: "{{ vpc.region }}"
+      vpc_id: "{{ item.item.vpc.id }}"
+      route_table_id: "{{ item.route_tables[0].id }}"
+      region: "{{ region }}"
       lookup: id
       tags:
         Name: Public for subnet
-      subnets: "{{ subnet.results | selectattr('item.key', 'equalto', primary_subnet) | map(attribute='subnet.id') | list }}"
+      subnets: "{{ subnets_info.results | selectattr('item.value.gateway', 'defined') | map(attribute='subnet.id') | list }}"
       routes:
         - dest: 0.0.0.0/0
-          gateway_id: "{{ igw.gateway_id }}"
+          gateway_id: "{{ (igw.results | selectattr('item.item.key', 'equalto', item.item.item.key) | list)[0].gateway_id }}"
+    with_items: "{{ rtb.results }}"
 
 - name: build and setup instances
   hosts: targets
@@ -67,9 +72,9 @@
     with_fileglob: "{{ site_root }}/vars/*.yml"
   - name: build EC2 instance
     ec2:
-      region: "{{ vpc.region }}"
-      vpc_subnet_id: "{{ (manager_vars.subnet.results | selectattr('item.key', 'equalto', primary_subnet) | list)[0].subnet.id }}"
-      image: "{{ aws_image_id }}"
+      region: "{{ region }}"
+      vpc_subnet_id: "{{ (manager_vars.subnets_info.results | selectattr('item.key', 'equalto', primary_subnet) | list)[0].subnet.id }}"
+      image: "{{ image_id }}"
       instance_type: "{{ host_size }}"
       key_name: awsroot
       volumes:
@@ -91,11 +96,11 @@
     register: ec2
   - name: add eni
     ec2_eni:
-      region: "{{ vpc.region }}"
+      region: "{{ region }}"
       attached: True
       delete_on_termination: True
       description: "{{inventory_hostname}}-{{item.name}}"
-      subnet_id: "{{ (manager_vars.subnet.results | selectattr('item.key', 'equalto', item.name) | list)[0].subnet.id }}"
+      subnet_id: "{{ (manager_vars.subnets_info.results | selectattr('item.key', 'equalto', item.name) | list)[0].subnet.id }}"
       device_index: "{{ item.device_index }}"
       instance_id: "{{ ec2.tagged_instances[0].id }}"
       private_ip_address: "{{ item.ip }}"
@@ -104,17 +109,17 @@
     with_items: "{{ auxiliary_networks }}"
   - name: Find ENIs created for Edge instances
     ec2_eni_facts:
-      region: "{{ vpc.region }}"
+      region: "{{ region }}"
       filters:
         attachment.instance-id: "{{ ec2.tagged_instances[0].id }}"
-        subnet-id: "{{ (manager_vars.subnet.results | selectattr('item.key', 'equalto', primary_subnet) | list)[0].subnet.id }}"
+        subnet-id: "{{ (manager_vars.subnets_info.results | selectattr('item.key', 'equalto', primary_subnet) | list)[0].subnet.id }}"
     when: secondary_ip is defined
     register: secondary_ip_enis
   - name: assign secondary ip
     ec2_eni:
-      region: "{{ vpc.region }}"
-      subnet_id: "{{ (manager_vars.subnet.results | selectattr('item.key', 'equalto', primary_subnet) | list)[0].subnet.id }}"
-      eni_id: "{{ (secondary_ip_enis.network_interfaces[0].network_interface_id }}"
+      region: "{{ region }}"
+      subnet_id: "{{ (manager_vars.subnets_info.results | selectattr('item.key', 'equalto', primary_subnet) | list)[0].subnet.id }}"
+      eni_id: "{{ secondary_ip_enis.network_interfaces[0].network_interface_id }}"
       state: present
       secondary_private_ip_addresses:
         - "{{ secondary_ip }}"
@@ -125,7 +130,7 @@
       device_id: "{{ ec2.tagged_instances[0].id }}"
       in_vpc: yes
       release_on_disassociation: yes
-      region: "{{ vpc.region }}"
+      region: "{{ region }}"
       public_ip: "{{ eip }}"
     register: eip
     when: eip is defined

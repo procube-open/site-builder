@@ -99,7 +99,7 @@
           initialize_params:
             disk_size_gb: 10
             disk_name: "boot-{{ inventory_hostname }}"
-            source_image: projects/centos-cloud/global/images/family/centos-7
+            source_image: "{{ image_id }}"
       network_interfaces: "{{ [ primary_nic ] + (aux_nic_result.results | default([]) | map(attribute='ansible_facts.aux_nic') | list) }}"
       zone: "{{ zone }}"
       project: "{{ ansible_env.GCP_PROJECT }}"

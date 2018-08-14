@@ -9,8 +9,7 @@
     - name: urllib3
     - name: requests
     - name: ansible
-      version: 2.6.0
-    - name: docker-py
+    - name: docker
     # for lookup('dig', ..)
     - name: dnspython
 - name: "setup ansible configuration files"
