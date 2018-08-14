@@ -1,0 +1,54 @@
+---
+- name: add gcloud cli repository
+  become_user: root
+  yum_repository:
+    name: google-cloud-sdk
+    description: Google Cloud SDK packages for CentOS 7
+    baseurl: https://packages.cloud.google.com/yum/repos/cloud-sdk-el7-x86_64
+    gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg
+    gpgcheck: yes
+    repo_gpgcheck: yes
+- name: add gcloud cli repo key
+  become_user: root
+  rpm_key:
+    state: present
+    key: "{{ item }}"
+    validate_certs: yes
+  with_items:
+    - https://packages.cloud.google.com/yum/doc/yum-key.gpg
+    - https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+  register: import_key
+- name: Make cache
+  become_user: root
+  command: "yum -q makecache -y --disablerepo='*' --enablerepo='google-cloud-sdk'"
+  when: import_key.results[0].changed or import_key.results[1].changed
+- name: "install gcloud cli"
+  become_user: root
+  yum: name=google-cloud-sdk state=present update_cache=yes
+- name: "install requests google-auth for GCP"
+  pip:
+    name: "{{ item }}"
+    state: latest
+    virtualenv: "~/ansible"
+  with_items:
+    - requests
+    - google-auth
+- name: "copy credential file"
+  copy:
+    content: "{{ gcp_credential_json }}"
+    dest: "~/.gcp_credentials.json"
+    mode: 0600
+- name: "set environment variables for GCP configuration"
+  blockinfile:
+    dest: ~/.bashrc
+    insertafter: EOF
+    state: present
+    block: "export {{item.key}}='{{item.value}}'"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{item.key}}"
+  with_dict:
+    GCP_AUTH_KIND: serviceaccount
+    # Service Acccount Email only works with Machine Account-based authentication
+    # GCP_SERVICE_ACCOUNT_EMAIL: "{{ gcp_email }}"
+    GCP_SERVICE_ACCOUNT_FILE: "~/.gcp_credentials.json"
+    GCP_SCOPES: "https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/compute, https://www.googleapis.com/auth/devstorage.full_control"
+    GCP_PROJECT: "{{ project_name }}"

@@ -17,5 +17,5 @@
 - name: initialize drbd master
   shell: "yes yes | drbdmanage init {{ private_ip }}"
   register: drbd_initialize
-  when: inventory_hostname == master_node and ('No currently configured DRBD found' in drbd_status.stdout)
+  when: inventory_hostname == drbd_master and ('No currently configured DRBD found' in drbd_status.stdout)
   # notify: require reboot

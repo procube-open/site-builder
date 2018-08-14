@@ -9,7 +9,7 @@
     - name: urllib3
     - name: requests
     - name: ansible
-      version: 2.5.0
+      version: 2.6.0
     - name: docker-py
     # for lookup('dig', ..)
     - name: dnspython

@@ -1,0 +1,26 @@
+- name: Destroy VPC
+  hosts: localhost
+  connection: local
+  tasks:
+  - name: Delete subnets
+    ec2_vpc_subnet:
+      state: absent
+      vpc_id: "{{ vpc_info.vpc.id }}"
+{% raw %}
+      cidr: "{{ item }}"
+{% endraw %}
+    with_items:
+{% for key, value in vpc.subnets.items() %}
+      - {{ value.cidr }}
+{% endfor %}
+  - name: Delete VPC gateway
+    ec2_vpc_igw:
+      vpc_id: "{{ vpc_info.vpc.id }}"
+      region: "{{ vpc.region }}"
+      state: absent
+  - name: Delete VPC
+    ec2_vpc_net:
+      state: absent
+      name: "{{ vpc.name }}"
+      cidr_block: "{{ vpc.cidr }}"
+      region: "{{ vpc.region }}"

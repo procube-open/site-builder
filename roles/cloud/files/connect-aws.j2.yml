@@ -34,30 +34,25 @@
         from_port: 5443
         cidr_ip: "{{ myip.ansible_facts.ipify_public_ip }}/32"
     when: safe_mode == 'present'
+{% endraw %}
   - name: set inter-member comm rule and Name tag to default security group for VPC
     ec2_group:
       state: present
       name: default
       tags:
-        Name: "group-{{ item.name }}"
-      vpc_id: "{{ item.id }}"
+        Name: "group-{{ vpc.name }}"
+      vpc_id: "{{ vpc_info.vpc.id }}"
       description: "default VPC security group"
-{% endraw %}
-      region: "{{ aws.region }}"
+      region: "{{ vpc.region }}"
 {% raw %}
       rules: "{{ inbound_rules }} + {{ inbound_rules_myip | default([]) }}"
     register: group
-    with_items:
 {% endraw %}
-{% for result in vpc_info.results %}
-      - id: {{ result.vpc.id }}
-        name: {{ result.item.name }}
-{% endfor %}
   - name: gather ec2 fact
     ec2_instance_facts:
       instance_ids:
-{% for result in ec2.results %}
-        - {{ result.tagged_instances[0].id }}
+{% for host in groups.targets %}
+        - {{ hostvars[host].ec2.tagged_instances[0].id }}
 {% endfor %}
 {% raw %}
     register: ec2_fact

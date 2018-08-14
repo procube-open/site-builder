@@ -30,7 +30,6 @@
     content: "{{ builder_id_rsa }}"
     dest: "~/.ssh/id_rsa"
     mode: 0600
-  when: aws_builder | default(False)
 - name: "setup secondary ip"
   template:
     src: ifcfg-eth0:0

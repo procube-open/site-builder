@@ -1,0 +1,5 @@
+DEVICE=eth0:0
+BOOTPROTO=none
+ONBOOT=yes
+IPADDR={{ secondary_ip }}
+PREFIX={{ internal_net_cidr }}

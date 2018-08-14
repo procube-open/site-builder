@@ -17,6 +17,7 @@
 - name: allow local connection to administrator
   user:
     name: "{{ builder }}"
+    append: True
     groups: docker
   when: builder is defined
 - name: insert allow api port rule into iptables (no internal network)

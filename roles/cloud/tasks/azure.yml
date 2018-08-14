@@ -1,0 +1,38 @@
+---
+- name: "import Microsoft repo key"
+  become_user: root
+  rpm_key:
+    state: present
+    key: https://packages.microsoft.com/keys/microsoft.asc
+- name: "setup Microsoft yum repository"
+  become_user: root
+  copy:
+    content: |
+      [azure-cli]
+      name=Azure CLI
+      baseurl=https://packages.microsoft.com/yumrepos/azure-cli
+      enabled=1
+      gpgcheck=1
+      gpgkey=https://packages.microsoft.com/keys/microsoft.asc
+    dest: /etc/yum.repos.d/azure-cli.repo
+- name: "install azure cli"
+  become_user: root
+  yum: name=azure-cli state=present
+- name: "create directories"
+  file:
+    path: "~/.azure"
+    state: directory
+- name: "copy configuration and credential files"
+  template:
+    src: azure_cli_credentials.j2
+    dest: ~/.azure/credentials
+    mode: 0600
+- name: "install python modules for azure"
+  pip:
+    name: "{{ item }}"
+    state: latest
+    virtualenv: "~/ansible"
+  with_items:
+    - packaging
+    - msrestazure
+    - ansible[azure]

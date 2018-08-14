@@ -1,0 +1,11 @@
+---
+- name: add nodes
+  # use delegate_to to ensure the task is executed even if invoked as ansible-playbook -l xxx where xxx is not drbd_master
+  delegate_to: "{{ drbd_master }}"
+  shell: "drbdmanage add-node -j {{ inventory_hostname }} {{ private_ip }} | grep 'drbdmanage join'"
+  register: add_node
+  when: inventory_hostname != drbd_master and ('No currently configured DRBD found' in drbd_status.stdout)
+- name: join nodes
+  shell: "yes yes | {{ add_node.stdout }}; sleep 5"
+  when: inventory_hostname != drbd_master and ('No currently configured DRBD found' in drbd_status.stdout)
+  # notify: require reboot

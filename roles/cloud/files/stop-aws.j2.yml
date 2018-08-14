@@ -10,6 +10,6 @@
       region: ap-northeast-1
       wait: yes
       instance_ids:
-{% for result in ec2.results %}
-        - {{ result.tagged_instances[0].id }}
+{% for host in groups.targets %}
+        - {{ hostvars[host].ec2.tagged_instances[0].id }}
 {% endfor %}

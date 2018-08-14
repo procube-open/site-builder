@@ -1,0 +1,71 @@
+---
+- name: platform specific tasks
+  include_tasks: "{{ cloud_platform }}.yml"
+- name: "create directories"
+  file:
+    path: "~/.resource/templates"
+    state: directory
+- name: "copy playbook"
+  copy:
+    src: "build-{{ cloud_platform }}.yml"
+    dest: "~/.resource/build-cloud.yml"
+    mode: 0600
+- name: "copy playbook"
+  copy:
+    src: "install-playbooks.yml"
+    dest: "~/.resource/"
+    mode: 0600
+- name: "copy templates"
+  copy:
+    src: "{{ item }}-{{ cloud_platform }}.j2.yml"
+    dest: "~/.resource/templates/{{ item }}-cloud.j2.yml"
+    mode: 0600
+  with_items:
+    - connect
+    - destroy
+    - stop
+- name: "put private key"
+  copy:
+    content: "{{ builder_id_rsa }}"
+    dest: "~/.ssh/id_rsa"
+    mode: 0600
+- name: "Setup commands"
+  blockinfile:
+    dest: ~/.bashrc
+    insertafter: BOF
+    state: present
+    block: |
+      function {{ item.name }}() {
+      {% if item.pre_command is defined %}
+        {{ item.pre_command}}
+      {% endif %}
+        {{ item.command }} "$@"
+      {% if item.post_command is defined %}
+        {{ item.post_command}}
+      {% endif %}
+      }
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{item.name}}"
+  with_items:
+    - name: buildCloud
+      command: "ansible-playbook  -e site_root={{ site_root }} ~/.resource/build-cloud.yml"
+      post_command: connectCloud
+    - name: buildHosts
+      command: "ansible-playbook {{ site_root }}/site-builder/playbooks/site.yml"
+    - name: connectCloud
+      pre_command: startVMs
+      command: ansible-playbook -e mode=present ~/.resource/connect-cloud.yml
+    - name: disconnectCloud
+      command: ansible-playbook -e mode=absent ~/.resource/connect-cloud.yml
+    - name: stopVMs
+      pre_command: disconnectCloud
+      command: ansible-playbook ~/.resource/stop-cloud.yml
+    - name: startVMs
+      command: ansible-playbook -e target_state=running ~/.resource/stop-cloud.yml
+    - name: restartVMs
+      command: ansible-playbook -e target_state=restarted ~/.resource/stop-cloud.yml
+    - name: terminateVMs
+      pre_command: disconnectCloud
+      command: ansible-playbook -e target_state=absent ~/.resource/stop-cloud.yml
+    - name: destroyCloud
+      pre_command: terminateVMs
+      command: ansible-playbook ~/.resource/destroy-cloud.yml

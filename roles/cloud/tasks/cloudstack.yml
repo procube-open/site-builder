@@ -1,0 +1,5 @@
+- name: "copy configuration and credential files"
+  template:
+    src: "cloudstack.ini.j2"
+    dest: "~/.cloudstack.ini"
+    mode: 0600

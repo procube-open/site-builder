@@ -1,0 +1,6 @@
+---
+builder: "{{ administrator | default('vagrant') }}"
+builder_group: "{{ administrator | default('vagrant') }}"
+venvs:
+  - ansible
+mainenv: ansible

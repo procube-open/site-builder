@@ -1,0 +1,133 @@
+---
+- name: setup VPC
+  hosts: managers
+  connection: local
+  vars:
+      ansible_python_interpreter: "/home/vagrant/ansible/bin/python"
+
+  tasks:
+  - name: load variables from parent vars directory
+    include_vars: "{{ item }}"
+    with_fileglob: "{{ site_root }}/vars/*.yml"
+  - name: construct VPC
+    ec2_vpc_net:
+      name: "{{ vpc.name }}"
+      state: present
+      cidr_block: "{{ vpc.cidr }}"
+      region: "{{ vpc.region }}"
+    register:  vpc_info
+  - name: Setup internet gateway for VPC
+    ec2_vpc_igw:
+      vpc_id: "{{ vpc_info.vpc.id }}"
+      region: "{{ vpc.region }}"
+      state: present
+      tags:
+        Name: gateway for {{ vpc.name }}
+    register: igw
+  - name: Setup subnet for VPC
+    ec2_vpc_subnet:
+      state: present
+      az: "{{ item.value.zone | default(vpc.default_zone) }}"
+      vpc_id: "{{ vpc_info.vpc.id }}"
+      cidr: "{{ item.value.cidr }}"
+      resource_tags:
+        Name: "subnet_{{ item.key }}"
+    with_dict: "{{ vpc.subnets }}"
+    register: subnet
+  - name: gather default root table facts
+    ec2_vpc_route_table_facts:
+      region: "{{ vpc.region }}"
+      filters:
+        vpc-id: "{{ vpc_info.vpc.id }}"
+    register: rtb
+  - name: Set up public subnet route table
+    ec2_vpc_route_table:
+      vpc_id: "{{ vpc_info.vpc.id }}"
+      route_table_id: "{{ rtb.route_tables[0].id }}"
+      region: "{{ vpc.region }}"
+      lookup: id
+      tags:
+        Name: Public for subnet
+      subnets: "{{ subnet.results | selectattr('item.key', 'equalto', primary_subnet) | map(attribute='subnet.id') | list }}"
+      routes:
+        - dest: 0.0.0.0/0
+          gateway_id: "{{ igw.gateway_id }}"
+
+- name: build and setup instances
+  hosts: targets
+  connection: local
+  vars:
+    manager_vars: "{{ hostvars[manager_host] }}"
+    ansible_python_interpreter: "/home/vagrant/ansible/bin/python"
+  gather_facts: False
+
+  tasks:
+  - name: load variables from parent vars directory
+    include_vars: "{{ item }}"
+    with_fileglob: "{{ site_root }}/vars/*.yml"
+  - name: build EC2 instance
+    ec2:
+      region: "{{ vpc.region }}"
+      vpc_subnet_id: "{{ (manager_vars.subnet.results | selectattr('item.key', 'equalto', primary_subnet) | list)[0].subnet.id }}"
+      image: "{{ aws_image_id }}"
+      instance_type: "{{ host_size }}"
+      key_name: awsroot
+      volumes:
+        - device_name: /dev/sda1
+          volume_type: gp2
+          volume_size: 8
+          delete_on_termination: true
+      assign_public_ip: true
+      wait: yes
+      group: default
+      private_ip: "{{private_ip | default(ansible_host)}}"
+      termination_protection: no
+      count_tag:
+        Name: "{{ inventory_hostname }}"
+      exact_count: 1
+      # state: running
+      instance_tags:
+        Name: "{{ inventory_hostname }}"
+    register: ec2
+  - name: add eni
+    ec2_eni:
+      region: "{{ vpc.region }}"
+      attached: True
+      delete_on_termination: True
+      description: "{{inventory_hostname}}-{{item.name}}"
+      subnet_id: "{{ (manager_vars.subnet.results | selectattr('item.key', 'equalto', item.name) | list)[0].subnet.id }}"
+      device_index: "{{ item.device_index }}"
+      instance_id: "{{ ec2.tagged_instances[0].id }}"
+      private_ip_address: "{{ item.ip }}"
+      state: present
+    when: auxiliary_networks is defined
+    with_items: "{{ auxiliary_networks }}"
+  - name: Find ENIs created for Edge instances
+    ec2_eni_facts:
+      region: "{{ vpc.region }}"
+      filters:
+        attachment.instance-id: "{{ ec2.tagged_instances[0].id }}"
+        subnet-id: "{{ (manager_vars.subnet.results | selectattr('item.key', 'equalto', primary_subnet) | list)[0].subnet.id }}"
+    when: secondary_ip is defined
+    register: secondary_ip_enis
+  - name: assign secondary ip
+    ec2_eni:
+      region: "{{ vpc.region }}"
+      subnet_id: "{{ (manager_vars.subnet.results | selectattr('item.key', 'equalto', primary_subnet) | list)[0].subnet.id }}"
+      eni_id: "{{ (secondary_ip_enis.network_interfaces[0].network_interface_id }}"
+      state: present
+      secondary_private_ip_addresses:
+        - "{{ secondary_ip }}"
+    when: secondary_ip is defined
+  - name: associate the elastic IP with instances
+    # support only for private_ip, secondary_ip or auxiliary_networks are not supported
+    ec2_eip:
+      device_id: "{{ ec2.tagged_instances[0].id }}"
+      in_vpc: yes
+      release_on_disassociation: yes
+      region: "{{ vpc.region }}"
+      public_ip: "{{ eip }}"
+    register: eip
+    when: eip is defined
+
+- import_playbook: install-playbooks.yml

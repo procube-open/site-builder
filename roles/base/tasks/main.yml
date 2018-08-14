@@ -31,7 +31,7 @@
   with_items:
     - sysstat
   notify: require reboot
-- name: set host name
+- name: set hostname
   hostname:
     name: "{{ inventory_hostname }}"
 - name: "gather if aws or not"

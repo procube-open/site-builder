@@ -1,0 +1,109 @@
+---
+- name: setup VPC and VMs
+  hosts: managers
+  connection: local
+  vars:
+      ansible_python_interpreter: "/home/vagrant/ansible/bin/python"
+
+  tasks:
+  - name: load variables from parent vars directory
+    include_vars: "{{ item }}"
+    with_fileglob: "{{ site_root }}/vars/*.yml"
+  - name: create networks
+    gcp_compute_network:
+      name: "{{ item.key }}"
+      project: "{{ ansible_env.GCP_PROJECT }}"
+      # if auto_create_subnetworks: False, then the VCP is created as legacy mode,
+      # and cause error "A subnet mode Network must be specified for Subnetwork creation"
+      auto_create_subnetworks: True
+      state: present
+    with_dict: "{{ vpcs }}"
+    register: gcp_vpcs
+  - name: create firewalls
+    gcp_compute_firewall:
+      name: "{{ item.key }}-allow-internal"
+      description: "Allow internal traffic on the {{ item.key }} network"
+      source_ranges: "{{ item.value.cidr }}"
+      network: "{{ (gcp_vpcs.results | selectattr('item.key','equalto', item.key) | list)[0].selfLink }}"
+      allowed:
+        - ip_protocol: 'tcp'
+          ports:
+            - "0-65535"
+        - ip_protocol: 'udp'
+          ports:
+            - "0-65535"
+        - ip_protocol: 'icmp'
+      project: "{{ ansible_env.GCP_PROJECT }}"
+      state: present
+    with_dict: "{{ vpcs }}"
+  - name: create subnetworks
+    gcp_compute_subnetwork:
+      name: "{{ item.key }}"
+      region: "{{ region }}"
+      network: "{{ (gcp_vpcs.results | selectattr('item.key','equalto', item.value.vpc) | list)[0] }}"
+      ip_cidr_range: "{{ item.value.cidr }}"
+      project: "{{ ansible_env.GCP_PROJECT }}"
+      state: present
+    with_dict: "{{ subnets }}"
+    register: subnets_facts
+
+- name: build and setup instances
+  hosts: targets
+  connection: local
+  vars:
+    manager_vars: "{{ hostvars[manager_host] }}"
+    ansible_python_interpreter: "/home/vagrant/ansible/bin/python"
+
+  tasks:
+  - name: load variables from parent vars directory
+    include_vars: "{{ item }}"
+    with_fileglob: "{{ site_root }}/vars/*.yml"
+  - name: create global ip
+    gcp_compute_address:
+      name: "gip-{{ inventory_hostname }}"
+      region: "{{ region }}"
+      project: "{{ ansible_env.GCP_PROJECT }}"
+      state: present
+    register: gip
+  - name: set primary network interface parameter
+    set_fact:
+      primary_nic:
+        name: eth0
+        subnetwork: "{{ (manager_vars.subnets_facts.results | selectattr('name', 'equalto', primary_subnet) | list)[0] }}"
+        network_ip: "{{ private_ip }}"
+        access_configs:
+          - name: "ac_gip_{{ inventory_hostname }}"
+            nat_ip: "{{ gip }}"
+            type: 'ONE_TO_ONE_NAT'
+  - name: set auxiliary network interface parameter
+    set_fact:
+      aux_nic:
+        name: "eth{{ item.device_index }}"
+        subnetwork: "{{ (manager_vars.subnets_facts.results | selectattr('name', 'equalto', item.name) | list)[0] }}"
+        network_ip: "{{item.ip}}"
+    when: auxiliary_networks is defined
+    register: aux_nic_result
+    with_items: "{{ auxiliary_networks }}"
+  - name: create instances
+    gcp_compute_instance:
+      state: present
+      name: "{{ inventory_hostname }}"
+      machine_type: "{{ host_size }}"
+      # empty metadata cause error 'gcp_compute_instance.py, line 1109, in metadata_encoder for key in metadata: TypeError: 'NoneType' object is not iterable'
+      metadata:
+        hostname: "{{ inventory_hostname }}"
+        ssh-keys: "{{ administrator }}:{{ builder_id_rsa_pub }}"
+      disks:
+        - auto_delete: true
+          boot: true
+          initialize_params:
+            disk_size_gb: 10
+            disk_name: "boot-{{ inventory_hostname }}"
+            source_image: projects/centos-cloud/global/images/family/centos-7
+      network_interfaces: "{{ [ primary_nic ] + (aux_nic_result.results | default([]) | map(attribute='ansible_facts.aux_nic') | list) }}"
+      zone: "{{ zone }}"
+      project: "{{ ansible_env.GCP_PROJECT }}"
+    register: instance
+    tags: create-instances
+
+- import_playbook: install-playbooks.yml

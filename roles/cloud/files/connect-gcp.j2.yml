@@ -1,0 +1,68 @@
+{% raw %}
+---
+- name: Connect gcp enviroment
+  hosts: localhost
+  connection: local
+  vars:
+    safe_mode: "{{mode | default('present')}}"
+{% endraw %}
+    manager_host: "{{ manager_host }}"
+    registry_fqdn: "{{ registry_fqdn }}"
+    inbound_rules: "{{ inbound_rules | default([]) }}"
+    main_vpc: "{{ subnets[primary_subnet].vpc }}"
+    main_vpc_link: "{{ (gcp_vpcs.results | selectattr('name','equalto', subnets[primary_subnet].vpc) | list)[0].selfLink }}"
+    instances:
+{{ groups['targets'] | map('extract', hostvars, 'instance') | list | to_nice_yaml | indent(6, true) }}
+    administrator: "{{ administrator }}"
+    project: "{{ ansible_env.GCP_PROJECT }}"
+{% raw %}
+
+  tasks:
+  - name: get my global ip
+    ipify_facts:
+    register: myip
+    when: safe_mode == 'present'
+  - name: build firewall to ssh and icmp is allowed for my global ip only
+    gcp_compute_firewall:
+      name: "{{ main_vpc }}-allow-ssh-icmp"
+      description: "Allow ssh and icmp to the {{ main_vpc }} network"
+      source_ranges: "{{ myip.ansible_facts.ipify_public_ip }}/32"
+      network: "{{ main_vpc_link }}"
+      allowed:
+        - ip_protocol: 'tcp'
+          ports:
+            - "22"
+        - ip_protocol: 'icmp'
+      project: "{{ project }}"
+      state: present
+    when: safe_mode == 'present'
+  - name: delete firewall to ssh and icmp is allowed for my global ip only
+    gcp_compute_firewall:
+      name: "{{ main_vpc }}-allow-ssh-icmp"
+      network: "{{ main_vpc_link }}"
+      project: "{{ project }}"
+      state: absent
+    when: safe_mode == 'absent'
+  - name: "Build hosts file"
+    become: True
+    blockinfile:
+      dest: /etc/hosts
+      insertafter: BOF
+      state: "{{ safe_mode }}"
+      block: "{{ (item.networkInterfaces | selectattr('name','equalto','eth0') | list)[0].accessConfigs[0].natIP }} {{ item.name }}{% if item.name == (manager_host | default(''))%} {{ registry_fqdn }}{% endif %}"
+      marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item.name }}"
+    with_items: "{{ instances }}"
+  - name: set .ssh/config
+    blockinfile:
+      dest: "~/.ssh/config"
+      marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item.name }}"
+      insertafter: BOF
+      state: "{{ safe_mode }}"
+      create: yes
+      mode: 0644
+      block: |
+        Host {{ item.name }}
+          User {{ administrator }}
+          StrictHostKeyChecking no
+    with_items: "{{ instances }}"
+{% endraw %}
