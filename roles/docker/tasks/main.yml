@@ -82,6 +82,21 @@
     marker: "# {mark} ANSIBLE MANAGED BLOCK for swarm"
   when: internal_net_addr is defined
   notify: require reboot
+- name: "gather if gcp or not"
+  stat: path=/etc/sysctl.d/11-gce-network-security.conf
+  register: gcp_cfg
+- name: "set kerner parameter for ip forwarding at gcp instance"
+  lineinfile:
+    regexp: "{{ item }}=[01]"
+    line: "{{ item }}=1"
+    path: /etc/sysctl.d/11-gce-network-security.conf
+    state: present
+  with_items:
+    - net.ipv4.ip_forward
+    - net.ipv4.conf.all.send_redirects
+    - net.ipv4.conf.default.send_redirects
+  notify: require reboot
+  when: gcp_cfg.stat.exists
 - name: enable service
   service: name=docker enabled=yes
   notify: require reboot

@@ -3,4 +3,4 @@
   pip:
     name: docker-compose
     state: present
-    virtualenv: "~/compose"
+    virtualenv: "~/ansible"

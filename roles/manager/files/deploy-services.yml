@@ -46,18 +46,6 @@
       key_path:  "../../.docker/key.pem"
     with_items: "{{ networks | default([])}}"
 
-  - name: modify delegator to reset ansible_python_interpreter
-    tags: compose-up
-    add_host:
-      hostname: "dlg-{{ item }}"
-      ansible_connection: local
-      enviroment:
-        DOCKER_HOST: "tcp://{{ item }}:2376"
-        DOCKER_TLS_VERIFY: 1
-      ansible_python_interpreter: "../../compose/bin/python"
-    with_items: "{{ play_hosts }}"
-    changed_when: False
-
   - name: "setup docker compose file"
     connection: local
     tags: compose-files
@@ -94,6 +82,16 @@
       cert_path: "../../.docker/cert.pem"
       key_path:  "../../.docker/key.pem"
     with_items: "{{ services | default([])}}"
+    when: swarm_master is not defined
+
+  - name: deploy service stacks
+    delegate_to: "dlg-{{ inventory_hostname }}"
+    tags: compose-up
+    shell: "docker stack deploy --prune --compose-file docker-compose.yml {{ item }}"
+    args:
+      chdir: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
+    with_items: "{{ services | default([])}}"
+    when: swarm_master is defined
 
   - name: install backup shell script
     connection: local

@@ -12,7 +12,10 @@
     main_vpc: "{{ subnets[primary_subnet].vpc }}"
     main_vpc_link: "{{ (gcp_vpcs.results | selectattr('name','equalto', subnets[primary_subnet].vpc) | list)[0].selfLink }}"
     instances:
-{{ groups['targets'] | map('extract', hostvars, 'instance') | list | to_nice_yaml | indent(6, true) }}
+{% for host in groups['targets'] | map('extract', hostvars, 'instance') | list %}
+      - name: {{ host.name }}
+        ip: {{ (host.networkInterfaces | selectattr('name','equalto','nic0') | list)[0].accessConfigs[0].natIP }}
+{% endfor %}
     administrator: "{{ administrator }}"
     project: "{{ ansible_env.GCP_PROJECT }}"
 {% raw %}
@@ -43,13 +46,13 @@
       project: "{{ project }}"
       state: absent
     when: safe_mode == 'absent'
-  - name: "Build hosts file"
+  - name: "build hosts file"
     become: True
     blockinfile:
       dest: /etc/hosts
       insertafter: BOF
       state: "{{ safe_mode }}"
-      block: "{{ (item.networkInterfaces | selectattr('name','equalto','eth0') | list)[0].accessConfigs[0].natIP }} {{ item.name }}{% if item.name == (manager_host | default(''))%} {{ registry_fqdn }}{% endif %}"
+      block: "{{ item.ip }} {{ item.name }}{% if item.name == (manager_host | default(''))%} {{ registry_fqdn }}{% endif %}"
       marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item.name }}"
     with_items: "{{ instances }}"
   - name: set .ssh/config

@@ -33,7 +33,6 @@
     - role: pip-venv
       venvs:
         - ansible
-        - compose
     - ansible
     - docker-compose
     - ca

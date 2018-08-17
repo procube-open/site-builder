@@ -68,7 +68,13 @@
   - name: set primary network interface parameter
     set_fact:
       primary_nic:
-        name: eth0
+        # the name of network interface must be nic0, nic1,... nic10
+        # the name specified here does not affect the name in the return value (it is always nic0)
+        # and it also does not affect the name of the device (it is always eth0)
+        # if we specify "eth0" here,
+        # it cause following ERROR at gcp_compute_instance when instance is already exists.
+        ###  The error was: AttributeError: 'NoneType' object has no attribute 'update' ###
+        name: nic0
         subnetwork: "{{ (manager_vars.subnets_facts.results | selectattr('name', 'equalto', primary_subnet) | list)[0] }}"
         network_ip: "{{ private_ip }}"
         access_configs:
@@ -78,7 +84,7 @@
   - name: set auxiliary network interface parameter
     set_fact:
       aux_nic:
-        name: "eth{{ item.device_index }}"
+        name: "nic{{ item.device_index }}"
         subnetwork: "{{ (manager_vars.subnets_facts.results | selectattr('name', 'equalto', item.name) | list)[0] }}"
         network_ip: "{{item.ip}}"
     when: auxiliary_networks is defined
