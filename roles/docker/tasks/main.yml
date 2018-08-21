@@ -85,7 +85,7 @@
 - name: "gather if gcp or not"
   stat: path=/etc/sysctl.d/11-gce-network-security.conf
   register: gcp_cfg
-- name: "set kerner parameter for ip forwarding at gcp instance"
+- name: "set kernel parameter for ip forwarding at gcp instance"
   lineinfile:
     regexp: "{{ item }}=[01]"
     line: "{{ item }}=1"
@@ -97,6 +97,22 @@
     - net.ipv4.conf.default.send_redirects
   notify: require reboot
   when: gcp_cfg.stat.exists
+- name: add config RestartSec - create dir
+  file:
+    dest: /usr/lib/systemd/system/docker.service.d
+    state: directory
+    mode: 0700
+    owner: root
+    group: root
+- name: add config RestartSec - override.conf
+  copy:
+    dest: /usr/lib/systemd/system/docker.service.d/override.conf
+    content: |
+      [Service]
+      RestartSec=15s
+    mode: 0700
+    owner: root
+    group: root
 - name: enable service
   service: name=docker enabled=yes
   notify: require reboot

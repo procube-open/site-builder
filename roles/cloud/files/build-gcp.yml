@@ -63,8 +63,17 @@
       name: "gip-{{ inventory_hostname }}"
       region: "{{ region }}"
       project: "{{ ansible_env.GCP_PROJECT }}"
+      address: "{{ eip }}"
       state: present
     register: gip
+    when: eip is defined
+  - name: set primary network interface parameter
+    set_fact:
+      access_configs:
+        - name: "ac_gip_{{ inventory_hostname }}"
+          nat_ip: "{{ gip }}"
+          type: 'ONE_TO_ONE_NAT'
+    when: gip is defined
   - name: set primary network interface parameter
     set_fact:
       primary_nic:
@@ -77,10 +86,7 @@
         name: nic0
         subnetwork: "{{ (manager_vars.subnets_facts.results | selectattr('name', 'equalto', primary_subnet) | list)[0] }}"
         network_ip: "{{ private_ip }}"
-        access_configs:
-          - name: "ac_gip_{{ inventory_hostname }}"
-            nat_ip: "{{ gip }}"
-            type: 'ONE_TO_ONE_NAT'
+        access_configs: "{{ access_configs | default([]) }}"
   - name: set auxiliary network interface parameter
     set_fact:
       aux_nic:

@@ -14,7 +14,10 @@
     instances:
 {% for host in groups['targets'] | map('extract', hostvars, 'instance') | list %}
       - name: {{ host.name }}
-        ip: {{ (host.networkInterfaces | selectattr('name','equalto','nic0') | list)[0].accessConfigs[0].natIP }}
+{% set network_interface = (host.networkInterfaces | selectattr('name','equalto','nic0') | list)[0] %}
+{% if network_interface.accessConfigs %}
+        ip: {{ network_interface.accessConfigs[0].natIP }}
+{% endif %}
 {% endfor %}
     administrator: "{{ administrator }}"
     project: "{{ ansible_env.GCP_PROJECT }}"
@@ -54,7 +57,7 @@
       state: "{{ safe_mode }}"
       block: "{{ item.ip }} {{ item.name }}{% if item.name == (manager_host | default(''))%} {{ registry_fqdn }}{% endif %}"
       marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item.name }}"
-    with_items: "{{ instances }}"
+    with_items: "{{ instances | selectattr('ip', 'defined') | list }}"
   - name: set .ssh/config
     blockinfile:
       dest: "~/.ssh/config"
@@ -67,5 +70,5 @@
         Host {{ item.name }}
           User {{ administrator }}
           StrictHostKeyChecking no
-    with_items: "{{ instances }}"
+    with_items: "{{ instances | selectattr('ip', 'defined') | list }}"
 {% endraw %}
