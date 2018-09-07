@@ -63,10 +63,9 @@
       name: "gip-{{ inventory_hostname }}"
       region: "{{ region }}"
       project: "{{ ansible_env.GCP_PROJECT }}"
-      address: "{{ eip }}"
+      address: "{{ eip | default(omit) }}"
       state: present
     register: gip
-    when: eip is defined
   - name: set primary network interface parameter
     set_fact:
       access_configs:
@@ -109,7 +108,7 @@
         - auto_delete: true
           boot: true
           initialize_params:
-            disk_size_gb: 10
+            disk_size_gb: "{{ disk_size | default(16) }}"
             disk_name: "boot-{{ inventory_hostname }}"
             source_image: "{{ image_id }}"
       network_interfaces: "{{ [ primary_nic ] + (aux_nic_result.results | default([]) | map(attribute='ansible_facts.aux_nic') | list) }}"

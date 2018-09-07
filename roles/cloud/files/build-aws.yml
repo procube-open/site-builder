@@ -80,7 +80,7 @@
       volumes:
         - device_name: /dev/sda1
           volume_type: gp2
-          volume_size: 8
+          volume_size: "{{ disk_size | default(16) }}"
           delete_on_termination: true
       assign_public_ip: true
       wait: yes

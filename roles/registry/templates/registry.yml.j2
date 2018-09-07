@@ -7,7 +7,7 @@ services:
     networks:
       - regnet
     environment:
-      REGISTRY_STORAGE_FILESYSTEM_DELETEE_ENABLED: 'True'
+      REGISTRY_STORAGE_DELETE_ENABLED : 'True'
       REGISTRY_AUTH: htpasswd
       REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
       REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
@@ -38,7 +38,7 @@ networks:
 
 volumes:
   regdata:
-{% if master_node is defined %}
+{% if drbd_master is defined %}
     # name attirbuite supportted only if api version > 3.4
     name: regdata
     driver: drbdmanage

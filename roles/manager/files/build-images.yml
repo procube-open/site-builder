@@ -45,11 +45,20 @@
       env: "{{ env | default(omit) }}"
       privileged: "{{ privileged | default(omit) }}"
       volumes: "{{ volumes | default(omit) }}"
-      entrypoint: "{{ entrypoint | default(omit) }}"
-      working_dir: "{{ working_dir | default(omit) }}"
-      command: "{{ command | default(omit) }}"
+      entrypoint: "{{ build_override_entrypoint | default(entrypoint) | default(omit) }}"
+      working_dir: "{{ build_override_working_dir | default(working_dir) | default(omit) }}"
+      command: "{{ build_override_command | default(command) | default(omit) }}"
       stop_signal: "{{ stop_signal | default(omit) }}"
       user: "{{ user | default(omit) }}"
+
+  - name: inspect from image
+    delegate_to: localhost
+    connection: local
+    docker_image_facts:
+      name: "{{ from }}"
+    register: from_image_fact
+  - set_fact:
+      orig_config: "{{ from_image_fact.images[0].Config }}"
 
   - name: include role playbooks
     include_tasks: role.yml
@@ -60,13 +69,31 @@
     loop_control:
       loop_var: role_item
 
+  - name: reset build overrides
+    # original Config for alpine {"Cmd": ["/bin/sh"],"WorkingDir": "","Entrypoint": null}
+    # original Config for centos {"Cmd": ["/bin/bash"],"WorkingDir": "","Entrypoint": null}
+    set_fact:
+      reset_build_overrides: ""
+  - set_fact:
+      # --change CMD cannot set null, so set []
+      reset_build_overrides: "{{reset_build_overrides}} --change 'CMD {% if command is defined %}{{ command | to_json }}{% elif orig_config.Cmd == none %}[]{% else %}{{ orig_config.Cmd | to_json }}{% endif %}'"
+    when: build_override_command is defined
+  - set_fact:
+      # --change WORKDIR cannot set "", so set /
+      reset_build_overrides: "{{reset_build_overrides}} --change 'WORKDIR {% if working_dir is defined %}{{ working_dir | to_json }}{% elif orig_config.WorkingDir == '' %}/{% else %}{{ orig_config.WorkingDir | to_json }}{% endif %}'"
+    when: build_override_working_dir is defined
+  - set_fact:
+      # --change 'ENTRYPOINT []' does not set null, so set ["/bin/sh"]
+      reset_build_overrides: "{{reset_build_overrides}} --change 'ENTRYPOINT {% if entrypoint is defined %}{{ entrypoint | to_json }}{% elif orig_config.Entrypoint == none %}[\"/bin/sh\"]{% else %}{{ orig_config.Entrypoint | to_json }}{% endif %}'"
+    when: build_override_entrypoint is defined
+
   - name: commit image
     delegate_to: localhost
     connection: local
     shell: |
       docker stop "build_image_{{ inventory_hostname }}"
       docker rmi -f "{{ image_tag }}"
-      docker commit "build_image_{{ inventory_hostname }}" "{{ image_tag }}"
+      docker commit {{ reset_build_overrides }} "build_image_{{ inventory_hostname }}"  "{{ image_tag }}"
       docker rm "build_image_{{ inventory_hostname }}"
 
   - name: push image

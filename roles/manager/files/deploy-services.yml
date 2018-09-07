@@ -10,6 +10,13 @@
     tags: directories, networks, compose-up, compose-files, backup-restore
     include_vars: "{{ item }}"
     with_fileglob: "../../config/vars/*.yml"
+  - name: "setup docker compose file - create base dir"
+    connection: local
+    tags: directories
+    file:
+      path: "../../hosts.d/{{ inventory_hostname }}"
+      state: directory
+      mode: 0755
   - name: "setup docker compose file - create dir"
     connection: local
     tags: directories
@@ -87,7 +94,7 @@
   - name: deploy service stacks
     delegate_to: "dlg-{{ inventory_hostname }}"
     tags: compose-up
-    shell: "docker stack deploy --prune --compose-file docker-compose.yml {{ item }}"
+    shell: "docker stack deploy --prune --with-registry-auth --compose-file docker-compose.yml {{ item }}"
     args:
       chdir: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
     with_items: "{{ services | default([])}}"

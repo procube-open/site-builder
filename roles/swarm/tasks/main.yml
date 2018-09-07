@@ -19,6 +19,6 @@
   when: inventory_hostname != swarm_master and docker_info.stdout == "inactive"
 - name: add labels for groups
   delegate_to: "{{ swarm_master }}"
-  shell: "docker node update {% for g in group_names %}--label-add {{ g }} {% endfor %}{{ inventory_hostname }}"
+  shell: "docker node update {% for g in group_names %}--label-add {{ g }}=true {% endfor %}{{ inventory_hostname }}"
   register: swarm_add_labels
   when: docker_info.stdout == "inactive"
