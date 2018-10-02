@@ -1,6 +1,0 @@
----
-- import_tasks: build_docker_cluster.yml
-  tags: ['build_cluster','build_docker_cluster']
-
-- import_tasks: build_drbd_cluster.yml
-  tags: ['build_cluster','build_drbd_cluster']

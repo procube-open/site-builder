@@ -1,6 +1,6 @@
 ---
 - name: reboot
-  shell: "sleep 2 && reboot"
+  shell: "sleep 2 && {{ reboot_command | default('reboot')}}"
   async: 1
   poll: 0
   tags: reboot
@@ -11,3 +11,4 @@
     delay: 30
   tags: reboot
   listen: require reboot
+  when: reboot_command is not defined

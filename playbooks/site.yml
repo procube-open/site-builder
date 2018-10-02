@@ -13,6 +13,9 @@
     - iptables
     - role: internal-network
       when: internal_net_if is defined
+    - role: auxiliary-networks
+      when: (config_auxiliary_networks | default(False)) and auxiliary_networks is defined
+      tags: auxiliary-networks
     - role: users
       when: users is defined
     - strict-source-ip
@@ -30,7 +33,6 @@
     - role: pip-venv
       venvs:
         - ansible
-        - compose
     - ansible
     - docker-compose
     - ca
@@ -59,7 +61,9 @@
     - tls-certificate
     - docker
     - role: drbd
-      when: master_node is defined
+      when: drbd_resource is defined
+    - role: drbd-resource
+      when: drbd_resource is defined
     - reboot
 
 - name: setup manager user
@@ -85,19 +89,8 @@
 
   roles:
     - vars
-    - role: dango
-      when: master_node is defined
-- name: add drbd members
-  serial: 1
-  hosts: targets
-  gather_facts: False
-  become: True
-  tags: build-cluster
-
-  roles:
-    - vars
-    - role: dango-serial
-      when: master_node is defined
+    - role: swarm
+      when: swarm_master is defined
 
 - name: setup private registry
   hosts: managers

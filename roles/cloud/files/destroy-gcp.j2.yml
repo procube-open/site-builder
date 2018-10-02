@@ -1,0 +1,41 @@
+- name: Destroy VPC
+  hosts: localhost
+  connection: local
+  vars:
+    targets: "{{ groups['targets'] }}"
+    vpcs: "{{ vpcs }}"
+    project: "{{ ansible_env.GCP_PROJECT }}"
+    region: "{{ region }}"
+    subnets:
+{{ subnets | to_nice_yaml | indent(6, true) }}
+
+{% raw %}
+  tasks:
+  - name: delete global ip
+    gcp_compute_address:
+      name: "gip-{{ item }}"
+      project: "{{ project }}"
+      region: "{{ region }}"
+      state: absent
+    register: gip
+    with_items: "{{ targets }}"
+  - name: delete firewalls
+    gcp_compute_firewall:
+      name: "{{ item.key }}-allow-internal"
+      project: "{{ project }}"
+      state: absent
+    with_dict: "{{ vpcs }}"
+  - name: delete subnetworks
+    gcp_compute_subnetwork:
+      name: "{{ item.key }}"
+      project: "{{ project }}"
+      region: "{{ region }}"
+      state: absent
+    with_dict: "{{ subnets }}"
+  - name: Delete VPC
+    gcp_compute_network:
+      state: absent
+      name: "{{ item.key }}"
+      project: "{{ project }}"
+    with_dict: "{{ vpcs }}"
+{% endraw %}

@@ -1,7 +1,7 @@
 ---
 - name: download drbd rpm files
   unarchive:
-    src: https://github.com/procube-open/drbd9-rpm/releases/download/0.9.14/drbd9-rpm.tar.gz
+    src: https://github.com/procube-open/drbd9-rpm/releases/download/0.9.16/drbd9-rpm.tar.gz
     remote_src: yes
     dest: /root/
 - name: gather rpm file list
@@ -14,18 +14,24 @@
     state: present
   with_items: "{{ rpms.stdout_lines }}"
   register: drbd_install
-- name: enable drgdmanaged and docker-drbdmanage-plugin
-  service: "name={{item}} enabled=yes"
-  with_items:
-    - drbdmanaged.service
-    - docker-drbdmanage-plugin.socket
-  notify: require reboot
+- name: change usage count setting
+  lineinfile:
+    regex: "usage-count .*;"
+    line: "usage-count no;"
+    path: /etc/drbd.d/global_common.conf
+    state: present
+# - name: enable drgdmanaged and docker-drbdmanage-plugin
+#   service: "name={{item}} enabled=yes"
+#   with_items:
+#     - drbdmanaged.service
+#     - docker-drbdmanage-plugin.socket
+#   notify: require reboot
 - name: "insert allow drbd port rule into iptables (no internal network)"
   blockinfile:
     dest: /etc/sysconfig/iptables
     insertafter: -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
     block: |
-      -A INPUT -p tcp -s {{ item }} -m state --state NEW -m multiport --dport 6996,6999,7000:7999 -j ACCEPT
+      -A INPUT -p tcp -s {{ item }} -m state --state NEW -m multiport --dport 7000:7999 -j ACCEPT
     marker: "# {mark} ANSIBLE MANAGED BLOCK for drbd {{ item }}"
   with_items: "{{ansible_play_batch | map('extract', hostvars, 'private_ip') | list}}"
   tags: iptables
@@ -35,7 +41,7 @@
     dest: /etc/sysconfig/iptables
     insertafter: -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
     block: |
-      -A INPUT -p tcp  -s {{ internal_net_addr }}/{{ internal_net_cidr }} -m state --state NEW -m multiport --dport 6996,6999,7000:7999 -j ACCEPT
+      -A INPUT -p tcp  -s {{ internal_net_addr }}/{{ internal_net_cidr }} -m state --state NEW -m multiport --dport 7000:7999 -j ACCEPT
     marker: "# {mark} ANSIBLE MANAGED BLOCK for drbd"
   tags: iptables
   when: internal_net_addr is defined

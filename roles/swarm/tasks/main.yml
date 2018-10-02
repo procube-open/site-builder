@@ -1,0 +1,24 @@
+---
+- name: gather docker info
+  shell: docker info | awk '/^Swarm:/ {print $2}'
+  register: docker_info
+  changed_when: false
+- name: initialize master node
+  shell: "docker swarm init --advertise-addr {{ private_ip }}"
+  when: inventory_hostname == swarm_master and docker_info.stdout == "inactive"
+  register: swarm_init
+- name: get token for manager
+  delegate_to: "{{ swarm_master }}"
+  # ensure the task is executed even if invoked as ansible-playbook -l xxx where xxx is not swarm_master
+  shell: "docker swarm join-token {{ swarm_mode | default('manager') }} | grep 'docker swarm join'"
+  register: swarm_join_token
+  changed_when: false
+  when: inventory_hostname != swarm_master and docker_info.stdout == "inactive"
+- name: join as manager nodes
+  shell: "{{ swarm_join_token.stdout }}"
+  when: inventory_hostname != swarm_master and docker_info.stdout == "inactive"
+- name: add labels for groups
+  delegate_to: "{{ swarm_master }}"
+  shell: "docker node update {% for g in group_names %}--label-add {{ g }}=true {% endfor %}{{ inventory_hostname }}"
+  register: swarm_add_labels
+  when: docker_info.stdout == "inactive"

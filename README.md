@@ -86,12 +86,12 @@ site-builder を clone したディレクトリに以下のように設定ファ
 # クレデンシャル情報の設定
 各サービスへのアクセスのための秘密情報を credentials.yml に設定してください。
 - AWS EC2 へのSSH用秘密鍵を変数 id_rsa に設定
-- AWS API にアクセスするための鍵を変数 access_key_id　と secret_access_key　に設定
+- AWS API にアクセスするための鍵を変数 aws_access_key_id　と aws_secret_access_key　に設定
 
 設定例：
 ```
-access_key_id: EXAMPLEOFACCESSKEYID
-secret_access_key: EXAMPLEOFSECRETACCESSKEY
+aws_access_key_id: EXAMPLEOFACCESSKEYID
+aws_secret_access_key: EXAMPLEOFSECRETACCESSKEY
 builder_id_rsa: |
   -----BEGIN RSA PRIVATE KEY-----
   MIICXwIBAAKBgQDZBHBOzM1pIMEviVkE1EclpruTvSI29gXyIkbvefopkInovMjg

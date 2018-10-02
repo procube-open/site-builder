@@ -16,7 +16,7 @@
 
 - name: set ansible_python_interpreter
   set_fact:
-    ansible_python_interpreter: "/home/{{builder}}/compose/bin/python"
+    ansible_python_interpreter: "/home/{{ builder }}/ansible/bin/python"
 
 - name: compose up awx container
   docker_service:

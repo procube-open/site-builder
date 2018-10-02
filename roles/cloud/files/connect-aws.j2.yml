@@ -8,7 +8,12 @@
 {% endraw %}
     manager_host: "{{ manager_host }}"
     registry_fqdn: "{{ registry_fqdn }}"
+    region: "{{ region }}"
     inbound_rules: "{{ inbound_rules | default([]) }}"
+    vpcs:
+{{ vpcs | to_nice_yaml | indent(6, true) }}
+    vpc_id:
+{{ vpc_info.results | json_query('[*].{name: item.key, id: vpc.id}') | to_nice_yaml | indent(6, true) }}
 {% raw %}
 
   tasks:
@@ -25,39 +30,33 @@
         to_port: 22
         from_port: 22
         cidr_ip: "{{ myip.ansible_facts.ipify_public_ip }}/32"
-      - proto: tcp # docker api
-        to_port: 2376
-        from_port: 2376
-        cidr_ip: "{{ myip.ansible_facts.ipify_public_ip }}/32"
-      - proto: tcp # docker registory
-        to_port: 5443
-        from_port: 5443
-        cidr_ip: "{{ myip.ansible_facts.ipify_public_ip }}/32"
+      # - proto: tcp # docker api
+      #   to_port: 2376
+      #   from_port: 2376
+      #   cidr_ip: "{{ myip.ansible_facts.ipify_public_ip }}/32"
+      # - proto: tcp # docker registory
+      #   to_port: 5443
+      #   from_port: 5443
+      #   cidr_ip: "{{ myip.ansible_facts.ipify_public_ip }}/32"
     when: safe_mode == 'present'
   - name: set inter-member comm rule and Name tag to default security group for VPC
     ec2_group:
       state: present
       name: default
       tags:
-        Name: "group-{{ item.name }}"
-      vpc_id: "{{ item.id }}"
+        Name: "group-{{ item.key }}"
+      vpc_id: "{{ (vpc_id | selectattr('name', 'equalto', item.key) | list)[0].id }}"
       description: "default VPC security group"
-{% endraw %}
-      region: "{{ aws.region }}"
-{% raw %}
+      region: "{{ region }}"
       rules: "{{ inbound_rules }} + {{ inbound_rules_myip | default([]) }}"
     register: group
-    with_items:
+    with_dict: "{{ vpcs }}"
 {% endraw %}
-{% for result in vpc_info.results %}
-      - id: {{ result.vpc.id }}
-        name: {{ result.item.name }}
-{% endfor %}
   - name: gather ec2 fact
     ec2_instance_facts:
       instance_ids:
-{% for result in ec2.results %}
-        - {{ result.tagged_instances[0].id }}
+{% for host in groups.targets %}
+        - {{ hostvars[host].ec2.tagged_instances[0].id }}
 {% endfor %}
 {% raw %}
     register: ec2_fact

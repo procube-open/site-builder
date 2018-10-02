@@ -13,8 +13,8 @@
       become_user: "{{ administrator }}"
     - role: ansible
       become_user: "{{ administrator }}"
-    - role: aws
+    - role: cloud
       become_user: "{{ administrator }}"
-      aws_builder: True
+      when: cloud_platform is defined
     - role: reboot
       when: not (skip_reboot | default(False))

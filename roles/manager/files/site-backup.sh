@@ -14,7 +14,7 @@ function error () {
 }
 
 mode=Backup
-if [ "$#" -eq 2 -a "$1" == "-r" ]; then
+if [ "$#" -eq 1 -a "$1" == "-r" ]; then
   mode=Restore
 elif [ "$#" -gt 1 ]; then
   error "invalid arguments $*"
@@ -24,7 +24,7 @@ for hostdir in $(find $HOSTSDIR -maxdepth 1 -mindepth 1 -type d); do
   pushd $hostdir >& /dev/null
   if [ -x "do$mode" ]; then
     message "DO $mode for host ${hostdir##*/}"
-    backupdir="../../backup.d/${hostdir##*/}"
+    backupdir="../../backup"
     mkdir -p "$backupdir"
     if "./do$mode" "$backupdir"; then
       message "DONE $mode for host ${hostdir##*/}"

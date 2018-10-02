@@ -17,7 +17,7 @@
       enviroment:
         DOCKER_HOST: "tcp://{{ item }}:2376"
         DOCKER_TLS_VERIFY: 1
-      ansible_python_interpreter: "../../compose/bin/python"
+      ansible_python_interpreter: "../../ansible/bin/python"
     with_items: "{{ play_hosts }}"
     changed_when: False
 
@@ -35,6 +35,15 @@
       cert_path: "../../.docker/cert.pem"
       key_path:  "../../.docker/key.pem"
     with_items: "{{ services | default([])}}"
+    when: swarm_master is not defined
+
+  - name: undeploy service stacks
+    delegate_to: "dlg-{{ inventory_hostname }}"
+    shell: "docker stack rm {{ item }}"
+    args:
+      chdir: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
+    with_items: "{{ services | default([])}}"
+    when: swarm_master is defined
 
   - name: "delete host directory"
     connection: local

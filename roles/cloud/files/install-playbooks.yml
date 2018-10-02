@@ -1,0 +1,24 @@
+---
+- name: install utility playbooks
+  hosts: managers
+  connection: local
+
+  tasks:
+  - name: load variables from parent vars directory
+    include_vars: "{{ item }}"
+    with_fileglob: "{{ site_root }}/vars/*.yml"
+  - name: "Install destruct VPC playbook"
+    template:
+      src: templates/destroy-cloud.j2.yml
+      dest: ~/.resource/destroy-cloud.yml
+      mode: 0644
+  - name: "Install stop all instance playbook"
+    template:
+      src: templates/stop-cloud.j2.yml
+      dest: ~/.resource/stop-cloud.yml
+      mode: 0644
+  - name: "Install connect cloud playbook"
+    template:
+      src: templates/connect-cloud.j2.yml
+      dest: ~/.resource/connect-cloud.yml
+      mode: 0644

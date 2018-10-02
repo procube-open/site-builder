@@ -41,13 +41,13 @@
 - name: add builder group
   group:
     name: "{{ builder_group }}"
-    gid: 1000
+    gid: "{{ builder_gid | default(1000) }}"
     state: present
   when: "'managers' in group_names"
 - name: add builder user
   user:
     name: "{{ builder }}"
-    uid: 1000
+    uid: "{{ builder_uid | default(1000) }}"
     group: "{{ builder_group }}"
     state: present
   when: "'managers' in group_names"

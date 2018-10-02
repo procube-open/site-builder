@@ -1,0 +1,40 @@
+- name: set state to instances
+  hosts: localhost
+  connection: local
+  vars:
+    targets: "{{ groups['targets'] }}"
+    zone: "{{ zone }}"
+    project: "{{ ansible_env.GCP_PROJECT }}"
+    credential_file: "{{ ansible_env.GCP_SERVICE_ACCOUNT_FILE }}"
+    account: "{{ (gcp_credential_json | from_json).client_email }}"
+{% raw %}
+    safe_target_state: "{{ target_state | default('stopped') }}"
+
+  tasks:
+  - name: login for gcloud cli
+    shell: "gcloud auth activate-service-account {{ account }} --key-file=$HOME/.gcp_credentials.json"
+    changed_when: False
+    when: safe_target_state != 'absent'
+  - name: gather facts
+    shell: "gcloud compute instances describe {{ item }} --project={{ project }} --zone={{ zone }} | grep ^status: | cut -d ' ' -f 2"
+    changed_when: False
+    when: safe_target_state != 'absent'
+    with_items: "{{ targets }}"
+    register: instance_status
+  - name: "stop instances"
+    shell: "gcloud compute instances stop {{ item }} --project={{ project }} --zone={{ zone }}"
+    with_items: "{{ targets }}"
+    when: safe_target_state in ['restarted', 'stopped'] and (instance_status.results | selectattr('item','equalto',item) | list)[0].stdout == 'RUNNING'
+  - name: delete instances
+    gcp_compute_instance:
+      state: absent
+      name: "{{ item }}"
+      zone: "{{ zone }}"
+      project: "{{ project }}"
+    when: safe_target_state == 'absent'
+    with_items: "{{ targets }}"
+  - name: "start instances"
+    shell: "gcloud compute instances start {{ item }} --project={{ project }} --zone={{ zone }}"
+    with_items: "{{ targets }}"
+    when: safe_target_state == 'restarted' or (safe_target_state == 'running' and (instance_status.results | selectattr('item','equalto',item) | list)[0].stdout == 'TERMINATED')
+{% endraw %}

@@ -1,0 +1,24 @@
+---
+- name: "install aws cli and boto"
+  pip:
+    name: "{{ item }}"
+    state: latest
+    virtualenv: "~/ansible"
+  with_items:
+    - awscli
+    - boto3
+    - boto
+- name: "create directories"
+  file:
+    path: "~/.aws"
+    state: directory
+- name: "copy configuration and credential files"
+  template:
+    src: "{{ item.src }}"
+    dest: "~/{{ item.dest }}"
+    mode: 0600
+  with_items:
+    - src: aws_cli_config.j2
+      dest: ".aws/config"
+    - src: aws_cli_credentials.j2
+      dest: ".aws/credentials"

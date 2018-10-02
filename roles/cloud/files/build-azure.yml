@@ -1,0 +1,106 @@
+---
+- name: setup VPC
+  hosts: managers
+  connection: local
+  vars:
+      ansible_python_interpreter: "/home/vagrant/ansible/bin/python"
+
+  tasks:
+  - name: load variables from parent vars directory
+    include_vars: "{{ item }}"
+    with_fileglob: "{{ site_root }}/vars/*.yml"
+  - name: Create a resource group
+    azure_rm_resourcegroup:
+      name: "{{ project_name }}"
+      location: "{{ vpc.region }}"
+  - name: construct VPC
+    azure_rm_virtualnetwork:
+      resource_group: "{{ project_name }}"
+      name: "{{ vpc.name }}"
+      address_prefixes: "{{ vpc.cidr }}"
+    register: vpc_info
+  - name: Setup subnet for VPC
+    azure_rm_subnet:
+      resource_group: "{{ project_name }}"
+      name: "subnet_{{ item.key }}"
+      address_prefix: "{{ item.value.cidr }}"
+      virtual_network: "{{ vpc.name }}"
+    with_dict: "{{ vpc.subnets }}"
+  - name: Create Default Network Security Group for inter-hosts communication
+    azure_rm_securitygroup:
+      resource_group: "{{ project_name }}"
+      name: default
+      rules:
+        - name: internal
+          priority: 300
+          source_address_prefix: "{{ vpc.cidr }}"
+  - name: Create Network Security Group for site specific inbound rules from internet
+    azure_rm_securitygroup:
+      resource_group: "{{ project_name }}"
+      name: "sg_{{ item.name }}"
+      rules: "{{ item.rules | json_query('[*].{name: name, protocol: proto, destination_port_range: join(`-`,[to_string(from_port), to_string(to_port)]), priority: pri}') }}"
+    with_items: "{{ inbound_rules }}"
+    when: inbound_rules is defined
+
+- name: build and setup VMs
+  hosts: targets
+  connection: local
+  vars:
+    manager_vars: "{{ hostvars[manager_host] }}"
+    ansible_python_interpreter: "/home/vagrant/ansible/bin/python"
+  gather_facts: False
+
+  tasks:
+  - name: load variables from parent vars directory
+    include_vars: "{{ item }}"
+    with_fileglob: "{{ site_root }}/vars/*.yml"
+  - name: Create default network inteface card
+    azure_rm_networkinterface:
+      resource_group: "{{ project_name }}"
+      name: "{{inventory_hostname}}-default"
+      virtual_network: "{{ vpc.name }}"
+      subnet: "subnet_{{ primary_subnet }}"
+      security_group: default
+      ip_configurations:
+        - name: eth0
+          private_ip_address: "{{ private_ip }}"
+          private_ip_allocation_method: Static
+          primary: True
+    register: default_nic
+  - debug:
+      var: default_nic
+  - name: Create auxiliary network inteface card
+    azure_rm_networkinterface:
+      resource_group: "{{ project_name }}"
+      name: "{{inventory_hostname}}-{{item.name}}"
+      virtual_network: "{{ vpc.name }}"
+      subnet: "subnet_{{item.name}}"
+      security_group: "item.security_groups"
+    with_items: "{{ auxiliary_networks }}"
+    register: auxiliary_nics
+    when: auxiliary_networks is defined
+  - debug:
+      var: auxiliary_networks
+  - name: Create VM
+    azure_rm_virtualmachine:
+      resource_group: "{{ project_name }}"
+      name: "{{ inventory_hostname }}"
+      vm_size: "{{ host_size }}"
+      admin_username: azureuser
+      ssh_password_enabled: false
+      ssh_public_keys:
+        - path: /home/azureuser/.ssh/authorized_keys
+          key_data: "{{ builder_id_rsa_pub }}"
+      network_interfaces: "{{ [default_nic.state.name] + ( auxiliary_nics.results | default([]) | map(attribute='state.name') | list) }}"
+      image:
+        offer: CentOS
+        publisher: OpenLogic
+        sku: '7.5'
+        version: latest
+    register: vm
+  - debug:
+      var: vm
+  # TODO: secondary_ip
+  # TODO: eip
+# TODO: utility playbooks
+# - import_playbook: install-playbooks.yaml
