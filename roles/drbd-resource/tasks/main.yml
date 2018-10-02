@@ -1,0 +1,51 @@
+---
+- name: create partition
+  parted:
+    device: "{{ item.device }}"
+    number: "{{ item.number }}"
+    state: present
+  with_items: "{{auxiliary_disks}}"
+
+- name: put resource definition file
+  template:
+    src: volume.res
+    dest: "/etc/drbd.d/{{ item.name }}.res"
+  with_items: "{{ drbd_resource.resources }}"
+
+- name: gather if drbd metadata exists or not
+  shell: "drbdadm dstate {{ item.name }}"
+  changed_when: False
+  failed_when: False
+  register: dstate
+  with_items: "{{ drbd_resource.resources }}"
+- name: create drbd metadata
+  shell: "drbdadm create-md --force {{ item.name }}"
+  with_items: "{{ drbd_resource.resources }}"
+  when: (dstate.results | selectattr('item.name', 'equalto', item.name) | list)[0].rc != 0
+- name: gather drbd resource status
+  shell: "drbdadm adjust -d {{ item.name }}"
+  changed_when: False
+  with_items: "{{ drbd_resource.resources }}"
+  register: adjust
+- name: adjust drbd resource
+  shell: "drbdadm adjust {{ item.name }}"
+  with_items: "{{ drbd_resource.resources }}"
+  when: (adjust.results | selectattr('item.name', 'equalto', item.name) | list)[0].stdout_lines | length > 0
+- name: gather if formated or not
+  shell: 'blkid | grep ''^{{ item.device }}:.* TYPE="{{ item.fstype }}"'''
+  with_items: "{{ drbd_resource.resources }}"
+  changed_when: False
+  failed_when: False
+  register: formated
+  when: item.primary_node == inventory_hostname
+- name: force primary drbd resource
+  shell: "drbdadm primary --force {{ item.name }}"
+  with_items: "{{ drbd_resource.resources }}"
+  when: item.primary_node == inventory_hostname and (formated.results | selectattr('item.name', 'equalto', item.name) | list)[0].rc != 0
+- name: format drbd disk
+  filesystem:
+    dev: "{{ item.device }}"
+    force: True
+    fstype: "{{ item.fstype }}"
+  with_items: "{{ drbd_resource.resources }}"
+  when: item.primary_node == inventory_hostname and (formated.results | selectattr('item.name', 'equalto', item.name) | list)[0].rc != 0

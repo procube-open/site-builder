@@ -5,17 +5,17 @@
   file:
     path: "~/.resource/templates"
     state: directory
-- name: "copy playbook"
+- name: "copy build playbook"
   copy:
     src: "build-{{ cloud_platform }}.yml"
     dest: "~/.resource/build-cloud.yml"
     mode: 0600
-- name: "copy playbook"
+- name: "copy template expander of utility playbook"
   copy:
     src: "install-playbooks.yml"
     dest: "~/.resource/"
     mode: 0600
-- name: "copy templates"
+- name: "copy templates for utility playbooks"
   copy:
     src: "{{ item }}-{{ cloud_platform }}.j2.yml"
     dest: "~/.resource/templates/{{ item }}-cloud.j2.yml"

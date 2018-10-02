@@ -95,6 +95,26 @@
     when: auxiliary_networks is defined
     register: aux_nic_result
     with_items: "{{ auxiliary_networks }}"
+  - name: set boot disk parameter
+    set_fact:
+      boot_disk:
+        auto_delete: true
+        boot: true
+        initialize_params:
+          disk_size_gb: "{{ disk_size | default(16) }}"
+          disk_name: "boot-{{ inventory_hostname }}"
+          source_image: "{{ image_id }}"
+  - name: set auxiliary disk parameter
+    set_fact:
+      aux_disk:
+        auto_delete: True
+        boot: False
+        initialize_params:
+          disk_size_gb: "{{ item.size }}"
+          disk_name: "{{ item.name }}{{ item.number }}-{{ inventory_hostname }}"
+    when: auxiliary_disks is defined
+    register: aux_disk_result
+    with_items: "{{ auxiliary_disks }}"
   - name: create instances
     gcp_compute_instance:
       state: present
@@ -104,13 +124,7 @@
       metadata:
         hostname: "{{ inventory_hostname }}"
         ssh-keys: "{{ administrator }}:{{ builder_id_rsa_pub }}"
-      disks:
-        - auto_delete: true
-          boot: true
-          initialize_params:
-            disk_size_gb: "{{ disk_size | default(16) }}"
-            disk_name: "boot-{{ inventory_hostname }}"
-            source_image: "{{ image_id }}"
+      disks: "{{ [ boot_disk ] + (aux_disk_result.results | default([]) | map(attribute='ansible_facts.aux_disk') | list) }}"
       network_interfaces: "{{ [ primary_nic ] + (aux_nic_result.results | default([]) | map(attribute='ansible_facts.aux_nic') | list) }}"
       zone: "{{ zone }}"
       project: "{{ ansible_env.GCP_PROJECT }}"
