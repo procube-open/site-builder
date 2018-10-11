@@ -92,9 +92,9 @@
     when: swarm_master is not defined
 
   - name: deploy service stacks
-    delegate_to: "dlg-{{ inventory_hostname }}"
+    connection: local
     tags: compose-up
-    shell: "docker stack deploy --prune --with-registry-auth --compose-file docker-compose.yml {{ item }}"
+    shell: "DOCKER_HOST='tcp://{{ inventory_hostname }}:2376' DOCKER_TLS_VERIFY=1 docker stack deploy --prune --with-registry-auth --compose-file docker-compose.yml {{ item }}"
     args:
       chdir: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
     with_items: "{{ services | default([])}}"

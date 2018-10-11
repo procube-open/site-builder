@@ -49,3 +49,8 @@
     fstype: "{{ item.fstype }}"
   with_items: "{{ drbd_resource.resources }}"
   when: item.primary_node == inventory_hostname and (formated.results | selectattr('item.name', 'equalto', item.name) | list)[0].rc != 0
+- name: enable drbd resource service
+  service:
+    name: "drbd@{{ item.name }}.service"
+    enabled: True
+  with_items: "{{ drbd_resource.resources }}"

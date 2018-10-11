@@ -52,7 +52,7 @@
     path: .bashrc
     insertafter: BOF
     state: present
-    block: "alias dlg-{{ item }}='export DOCKER_HOST=tcp://{{ item }}:2376;export DOCKER_TLS_VERIFY=1; export PS1=\"[dlg-{{ item }}@\\h \\W]\\$ \"; cd ~/hosts.d/{{ item }}'"
+    block: "alias dlg-{{ item }}='export DOCKER_HOST=tcp://{{ item }}:2376;export DOCKER_TLS_VERIFY=1; export PS1=\"[dlg-{{ item }}@\\h \\W]\\$ \"'"
     marker: "# {mark} ANSIBLE MANAGED BLOCK dlg shortcut {{item}}"
   with_items: "{{ groups['targets'] }}"
 
@@ -62,7 +62,7 @@
     path: .bashrc
     insertafter: BOF
     state: present
-    block: "alias revert-dlg='export DOCKER_HOST=;export DOCKER_TLS_VERIFY=; cd ~'"
+    block: "alias revert-dlg='unset DOCKER_HOST=;unset DOCKER_TLS_VERIFY; export PS1=\"[{{ builder }}@\\h \\W]\\$ \"'"
     marker: "# {mark} ANSIBLE MANAGED BLOCK dlg shortcut revert dlg"
 
 - name: "install private key for ssh to target machines"

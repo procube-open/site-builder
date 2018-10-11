@@ -39,7 +39,7 @@
 
   - name: undeploy service stacks
     delegate_to: "dlg-{{ inventory_hostname }}"
-    shell: "docker stack rm {{ item }}"
+    shell: "DOCKER_HOST='tcp://{{ inventory_hostname }}:2376' DOCKER_TLS_VERIFY=1 docker stack rm {{ item }}"
     args:
       chdir: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
     with_items: "{{ services | default([])}}"

@@ -16,7 +16,7 @@
   register: drbd_install
 - name: change usage count setting
   lineinfile:
-    regex: "usage-count .*;"
+    regexp: "usage-count .*;"
     line: "usage-count no;"
     path: /etc/drbd.d/global_common.conf
     state: present
@@ -45,3 +45,7 @@
     marker: "# {mark} ANSIBLE MANAGED BLOCK for drbd"
   tags: iptables
   when: internal_net_addr is defined
+- name: "install drbd resource service template"
+  copy:
+    src: drbd@.service
+    dest: /usr/lib/systemd/system/
