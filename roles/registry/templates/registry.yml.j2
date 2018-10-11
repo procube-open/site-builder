@@ -38,13 +38,4 @@ networks:
 
 volumes:
   regdata:
-{% if drbd_master is defined %}
-    # name attirbuite supportted only if api version > 3.4
-    name: regdata
-    driver: drbdmanage
-    driver_opts:
-      fs: xfs
-      size: "{{registry_size | default(3000)}}"
-      replicas: 3
-    # external: true
-{% endif %}
+

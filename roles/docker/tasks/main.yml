@@ -110,6 +110,7 @@
     content: |
       [Service]
       RestartSec=15s
+      EnvironmentFile=-/etc/environment
     mode: 0700
     owner: root
     group: root
