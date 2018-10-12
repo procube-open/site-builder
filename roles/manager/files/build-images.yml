@@ -35,6 +35,13 @@
     changed_when: rmi_result.rc == 0
     failed_when: false
 
+  - name: check file /etc/environment for proxy setting
+    debug: msg="/etc/environment is exists in local"
+    with_first_found:
+      - files: /etc/environment
+        skip: True
+    register: proxy_setting
+
   - name: invoke container
     delegate_to: localhost
     connection: local
@@ -43,8 +50,9 @@
       name: "build_image_{{ inventory_hostname }}"
       hostname: "{{ inventory_hostname }}"
       env: "{{ env | default(omit) }}"
+      env_file: "{%if proxy_setting.skipped | default(False) %}{{omit}}{% else %}/etc/environment{% endif %}"
       privileged: "{{ privileged | default(omit) }}"
-      volumes: "{{ volumes | default(omit) }}"
+      volumes: "{%if proxy_setting.skipped | default(False) %}{{omit}}{% else %}['/etc/environment:/etc/environment']{% endif %}"
       entrypoint: "{{ build_override_entrypoint | default(entrypoint) | default(omit) }}"
       working_dir: "{{ build_override_working_dir | default(working_dir) | default(omit) }}"
       command: "{{ build_override_command | default(command) | default(omit) }}"
