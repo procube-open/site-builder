@@ -52,7 +52,6 @@
       env: "{{ env | default(omit) }}"
       env_file: "{%if proxy_setting.skipped | default(False) %}{{omit}}{% else %}/etc/environment{% endif %}"
       privileged: "{{ privileged | default(omit) }}"
-      volumes: "{%if proxy_setting.skipped | default(False) %}{{omit}}{% else %}['/etc/environment:/etc/environment']{% endif %}"
       entrypoint: "{{ build_override_entrypoint | default(entrypoint) | default(omit) }}"
       working_dir: "{{ build_override_working_dir | default(working_dir) | default(omit) }}"
       command: "{{ build_override_command | default(command) | default(omit) }}"
@@ -67,6 +66,12 @@
     register: from_image_fact
   - set_fact:
       orig_config: "{{ from_image_fact.images[0].Config }}"
+
+  - name: copy /etc/environment to container
+    copy:
+      src: /etc/environment
+      dest: /etc/environment
+    when: orig_config.Cmd != none and orig_config.Cmd[0] == "/sbin/init"
 
   - name: include role playbooks
     include_tasks: role.yml
