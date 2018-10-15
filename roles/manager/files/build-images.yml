@@ -58,12 +58,6 @@
       stop_signal: "{{ stop_signal | default(omit) }}"
       user: "{{ user | default(omit) }}"
 
-  - name: copy /etc/environment to container
-    copy:
-      src: /etc/environment
-      dest: /etc/environment
-    when: proxy_setting.skipped is not defined
-
   - name: inspect from image
     delegate_to: localhost
     connection: local
@@ -72,6 +66,12 @@
     register: from_image_fact
   - set_fact:
       orig_config: "{{ from_image_fact.images[0].Config }}"
+
+  - name: copy /etc/environment to container
+    copy:
+      src: /etc/environment
+      dest: /etc/environment
+    when: orig_config.Cmd != none and orig_config.Cmd[0] == "/sbin/init"
 
   - name: include role playbooks
     include_tasks: role.yml
