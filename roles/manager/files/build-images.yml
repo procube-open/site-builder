@@ -50,7 +50,7 @@
       name: "build_image_{{ inventory_hostname }}"
       hostname: "{{ inventory_hostname }}"
       env: "{{ env | default(omit) }}"
-      env_file: "{%if proxy_setting.skipped | default(False) %}{{omit}}{% else %}/etc/environment{% endif %}"
+      env_file: "{%if proxy_setting.skipped is defined %}{{omit}}{% else %}/etc/environment{% endif %}"
       privileged: "{{ privileged | default(omit) }}"
       entrypoint: "{{ build_override_entrypoint | default(entrypoint) | default(omit) }}"
       working_dir: "{{ build_override_working_dir | default(working_dir) | default(omit) }}"
@@ -71,7 +71,7 @@
     copy:
       src: /etc/environment
       dest: /etc/environment
-    when: orig_config.Cmd != none and orig_config.Cmd[0] == "/sbin/init"
+    when: proxy_setting.skipped is not defined and orig_config.Cmd != none and orig_config.Cmd[0] == "/sbin/init"
 
   - name: include role playbooks
     include_tasks: role.yml
