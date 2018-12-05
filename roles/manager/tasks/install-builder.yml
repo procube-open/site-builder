@@ -100,17 +100,15 @@
     - name: dexec
       pre_command: |-
         if [ -n DOCKER_SWARM_MANAGER ]; then
-          OLD_DOCKER_HOST=$DOCKER_HOST
-          container_name=$(docker service ps "$1" --format "{% raw %}{{ '{{.Name}}.{{.ID}}' }}{% endraw %}" --filter node="$2" --filter desired-state=running --no-trunc | head -1)
-          export DOCKER_HOST=$2:2376
-          shift
+          docker_command=$(docker service ps "$1" --format "{% raw %}{{ 'docker -H tcp://{{.Node}}:2376 exec -it {{.Name}}.{{.ID}}' }}{% endraw %}" --filter desired-state=running --no-trunc | head -1)
         else
-          container_name=$1
+          docker_command="docker exec -it $1"
         fi
         shift
-      command: 'docker exec -it $container_name /bin/sh -c "stty rows $(tput lines) cols $(tput cols) && export TERM=$TERM && exec $*"'
-      post_command: export DOCKER_HOST=$OLD_DOCKER_HOST
+      command: $docker_command
     - name: dbash
-      command: dexec "$@" bash
+      pre_command: set -- $1 /bin/sh -c "stty rows $(tput lines) cols $(tput cols) && export TERM=$TERM && exec bash"
+      command: dexec "$@"
     - name: dash
-      command: dexec "$@" ash
+      pre_command: set -- $1 /bin/sh -c "stty rows $(tput lines) cols $(tput cols) && export TERM=$TERM && exec ash"
+      command: dexec "$@"

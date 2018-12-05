@@ -35,7 +35,9 @@ services:
 
 networks:
   regnet:
-
+    ipam:
+      config:
+        - subnet: {{subnet_registry}}
 volumes:
   regdata:
 
