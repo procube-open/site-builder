@@ -3,10 +3,19 @@
   shell: docker info | awk '/^Swarm:/ {print $2}'
   register: docker_info
   changed_when: false
+- name: set docker_gwbridge subnet
+  shell: "docker network create --subnet {{ docker_gwbridge_subnet }} --opt com.docker.network.bridge.name=docker_gwbridge --opt com.docker.network.bridge.enable_icc=false --opt com.docker.network.bridge.enable_ip_masquerade=true docker_gwbridge"
+  when: docker_gwbridge_subnet is defined and docker_info.stdout == "inactive"
 - name: initialize master node
   shell: "docker swarm init --advertise-addr {{ private_ip }}"
   when: inventory_hostname == swarm_master and docker_info.stdout == "inactive"
   register: swarm_init
+- name: remove ingress subnet
+  shell: "yes | docker network rm ingress"
+  when: ingress_subnet is defined and inventory_hostname == swarm_master and docker_info.stdout == "inactive"
+- name: create ingress subnet
+  shell: "docker network create --driver overlay --ingress --subnet={{ ingress_subnet }} --gateway={{ ingress_subnet_gateway }} site-builder-ingress"
+  when: ingress_subnet is defined and inventory_hostname == swarm_master and docker_info.stdout == "inactive"
 - name: get token for manager
   delegate_to: "{{ swarm_master }}"
   # ensure the task is executed even if invoked as ansible-playbook -l xxx where xxx is not swarm_master

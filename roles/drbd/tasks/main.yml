@@ -10,9 +10,8 @@
   register: rpms
 - name: install packages
   yum:
-    name: "{{ item }}"
     state: present
-  with_items: "{{ rpms.stdout_lines }}"
+    name: "{{ rpms.stdout_lines }}"
   register: drbd_install
 - name: change usage count setting
   lineinfile:

@@ -21,13 +21,24 @@
     with_items: "{{ play_hosts }}"
     changed_when: False
 
+  - name: uninstall backup shell script
+    connection: local
+    tags: backup-restore
+    file:
+      path: "../../hosts.d/{{ inventory_hostname }}/do{{ item }}"
+      state: absent
+    with_items:
+      - Backup
+      - Restore
+    when: backup_scripts is defined
+
   - name: compose down containers
     delegate_to: "dlg-{{ inventory_hostname }}"
     docker_service:
       project_src: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
       state: absent
       remove_images: all
-      remove_volumes: True
+      remove_volumes: False
       docker_host: "tcp://{{ inventory_hostname }}:2376"
       timeout: 120
       tls: yes

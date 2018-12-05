@@ -1,0 +1,16 @@
+---
+- name: uninitialize swarm cluster
+  hosts: targets
+  gather_facts: False
+  become: True
+
+  roles:
+    - vars
+
+  tasks:
+    - name: uninitialize swarm
+      shell: "docker swarm leave -f"
+      ignore_errors: True
+    - name: delete docker_gwbridge bridge
+      shell: "docker network rm docker_gwbridge"
+      ignore_errors: True
