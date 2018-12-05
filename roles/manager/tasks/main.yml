@@ -4,10 +4,17 @@
   import_tasks: load-config-git.yml
   when: git is defined
 
+- name: copy config create dir
+  tags: copy-config
+  file:
+    dest: "~/config"
+    state: directory
+  when: git is not defined and site_root is not defined
+
 - name: copy config
   tags: copy-config
   copy:
-    src: "../"
+    src: "../../site-builder/../"
     dest: "~/config"
   when: git is not defined and site_root is not defined
 

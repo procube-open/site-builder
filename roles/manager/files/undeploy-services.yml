@@ -38,7 +38,7 @@
       project_src: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
       state: absent
       remove_images: all
-      remove_volumes: True
+      remove_volumes: False
       docker_host: "tcp://{{ inventory_hostname }}:2376"
       timeout: 120
       tls: yes

@@ -105,14 +105,9 @@
     owner: root
     group: root
 - name: add config RestartSec - override.conf
-  copy:
+  template:
     dest: /usr/lib/systemd/system/docker.service.d/override.conf
-    content: |
-      [Service]
-      RestartSec=15s
-      EnvironmentFile=-/etc/environment
-      ExecStart=
-      ExecStart=/usr/bin/dockerd
+    src: override.conf
     mode: 0700
     owner: root
     group: root
