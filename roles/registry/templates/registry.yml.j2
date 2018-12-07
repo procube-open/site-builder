@@ -35,9 +35,11 @@ services:
 
 networks:
   regnet:
+{% if subnet_registry is defined %}
     ipam:
       config:
         - subnet: {{subnet_registry}}
+{% endif %}
 volumes:
   regdata:
 
