@@ -31,7 +31,7 @@ if [ -r $backup_file ]; then
   docker cp -L $backup_file $container_name:{{ backup_script.restore_file }}
   if docker exec $container_name sh -l -c '{{ backup_script.restore_command }}'  ; then
     {% else %}
-  if docker exec $container_name sh -l -c '{{ backup_script.restore_command }}'  < $backup_file; then
+  if docker exec -i $container_name sh -l -c '{{ backup_script.restore_command }}'  < $backup_file; then
     {% endif %}
   {% elif backup_script.directory is defined %}
   docker cp -L $backup_file {{ backup_script.container }}:/tmp/restore.tar.gz
