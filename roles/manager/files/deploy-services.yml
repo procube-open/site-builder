@@ -4,6 +4,9 @@
   gather_facts: False
   become: false
   tags: compose-containers
+  vars:
+    ansible_connection: local
+    ansible_python_interpreter: "../../ansible/bin/python"
 
   tasks:
   - name: load variables from parent vars directory
@@ -11,14 +14,12 @@
     include_vars: "{{ item }}"
     with_fileglob: "../../config/vars/*.yml"
   - name: "setup docker compose file - create base dir"
-    connection: local
     tags: directories
     file:
       path: "../../hosts.d/{{ inventory_hostname }}"
       state: directory
       mode: 0755
   - name: "setup docker compose file - create dir"
-    connection: local
     tags: directories
     # become_user: "{{ safe_builder }}"
     file:
@@ -26,21 +27,7 @@
       state: directory
       mode: 0755
     with_items: "{{ services | default([])}}"
-
-  - name: add host for delegator
-    tags: networks
-    add_host:
-      hostname: "dlg-{{ item }}"
-      ansible_connection: local
-      enviroment:
-        DOCKER_HOST: "tcp://{{ item }}:2376"
-        DOCKER_TLS_VERIFY: 1
-      ansible_python_interpreter: "../../ansible/bin/python"
-    with_items: "{{ play_hosts }}"
-    changed_when: False
-
   - name: create networks
-    delegate_to: "dlg-{{ inventory_hostname }}"
     tags: networks
     docker_network:
       name: "{{ item.name }}"
@@ -51,7 +38,8 @@
       cacert_path: "../../.docker/ca.pem"
       cert_path: "../../.docker/cert.pem"
       key_path:  "../../.docker/key.pem"
-    with_items: "{{ networks | default([])}}"
+    loop: "{{ networks }}"
+    when: networks is defined
 
   - name: "setup docker compose file"
     connection: local
@@ -63,7 +51,6 @@
     with_items: "{{ services | default([])}}"
 
   - name: login to private registry
-    delegate_to: "dlg-{{ inventory_hostname }}"
     tags: compose-up
     docker_login:
       registry: "{{ registry }}"
@@ -75,18 +62,23 @@
       cacert_path: "../../.docker/ca.pem"
       cert_path: "../../.docker/cert.pem"
       key_path:  "../../.docker/key.pem"
+    run_once: True
 
-  - name: compose up containers
-    connection: local
+  - name: docker-compose up
     tags: compose-up
-    shell: "DOCKER_HOST='tcp://{{ inventory_hostname }}:2376' DOCKER_TLS_VERIFY=1 docker-compose up -d"
-    args:
-      chdir: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
+    docker_service:
+      project_src: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
+      pull: True
+      state: present
+      docker_host: "tcp://{{ inventory_hostname }}:2376"
+      tls: yes
+      cacert_path: "../../.docker/ca.pem"
+      cert_path: "../../.docker/cert.pem"
+      key_path:  "../../.docker/key.pem"
     loop: "{{ services | default([])}}"
     when: swarm_master is not defined
 
   - name: deploy service stacks
-    connection: local
     tags: compose-up
     shell: "DOCKER_HOST='tcp://{{ inventory_hostname }}:2376' DOCKER_TLS_VERIFY=1 docker stack deploy --prune --with-registry-auth --compose-file docker-compose.yml {{ item }}"
     args:
@@ -95,7 +87,6 @@
     when: swarm_master is defined
 
   - name: install backup shell script
-    connection: local
     tags: backup-restore
     template:
       src: "do{{ item }}.sh"

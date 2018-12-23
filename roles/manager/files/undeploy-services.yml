@@ -1,28 +1,19 @@
 ---
-- name: compose containers
+- name: destruct containers
   hosts: targets
   gather_facts: False
   become: false
-  tags: compose-containers
+  tags: destruct-containers
+  vars:
+    ansible_connection: local
+    ansible_python_interpreter: "../../ansible/bin/python"
 
   tasks:
   - name: load variables from parent vars directory
     include_vars: "{{ item }}"
     with_fileglob: "../../config/vars/*.yml"
 
-  - name: add host for delegator
-    add_host:
-      hostname: "dlg-{{ item }}"
-      ansible_connection: local
-      enviroment:
-        DOCKER_HOST: "tcp://{{ item }}:2376"
-        DOCKER_TLS_VERIFY: 1
-      ansible_python_interpreter: "../../ansible/bin/python"
-    with_items: "{{ play_hosts }}"
-    changed_when: False
-
   - name: uninstall backup shell script
-    connection: local
     tags: backup-restore
     file:
       path: "../../hosts.d/{{ inventory_hostname }}/do{{ item }}"
@@ -33,7 +24,6 @@
     when: backup_scripts is defined
 
   - name: compose down containers
-    delegate_to: "dlg-{{ inventory_hostname }}"
     docker_service:
       project_src: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
       state: absent
@@ -49,7 +39,6 @@
     when: swarm_master is not defined
 
   - name: undeploy service stacks
-    delegate_to: "dlg-{{ inventory_hostname }}"
     shell: "DOCKER_HOST='tcp://{{ inventory_hostname }}:2376' DOCKER_TLS_VERIFY=1 docker stack rm {{ item }}"
     args:
       chdir: "../../hosts.d/{{ inventory_hostname }}/{{ item }}"
