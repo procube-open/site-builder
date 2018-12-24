@@ -99,7 +99,7 @@
       command: ansible-playbook ~/site-builder/playbooks/undeploy-services.yml
     - name: dexec
       pre_command: |-
-        if [ -n DOCKER_SWARM_MANAGER ]; then
+        if [ -n "$DOCKER_SWARM_MANAGER" ]; then
           docker_command=$(docker service ps "$1" --format "{% raw %}{{ 'docker -H tcp://{{.Node}}:2376 exec -it {{.Name}}.{{.ID}}' }}{% endraw %}" --filter desired-state=running --no-trunc | head -1)
         else
           docker_command="docker exec -it $1"
