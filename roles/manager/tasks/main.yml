@@ -7,8 +7,19 @@
 - name: copy config
   tags: copy-config
   synchronize:
-    src: "../../site-builder/../"
+    src: "../../../.."
     dest: "~/config"
+  when: git is not defined and site_root is not defined
+
+- name: change owner of config
+  tags: copy-config
+  become: True
+  become_user: root
+  file:
+    path: "/home/{{ builder }}/config"
+    recurse: True
+    owner: "{{ builder }}"
+    group: "{{ builder_group }}"
   when: git is not defined and site_root is not defined
 
 - name: link config
