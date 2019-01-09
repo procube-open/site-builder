@@ -52,7 +52,7 @@
     path: .bashrc
     insertafter: BOF
     state: present
-    block: "alias dlg-{{ item }}='export DOCKER_SWARM_MANAGER={{ hostvars[item].swarm_master | default('') }};export DOCKER_HOST=tcp://{{ item }}:2376;export DOCKER_TLS_VERIFY=1; export PS1=\"[dlg-{{ item }}@\\h \\W]\\$ \"'"
+    block: "alias dlg-{{ item }}='export DOCKER_SWARM_MANAGER={{ hostvars[item].swarm_master | default('') }};export DOCKER_HOST=tcp://{{ item }}:2376;export DOCKER_TLS_VERIFY=1; PSSAVE=${PSSAVE:-$PS1}; PS1=\"[dlg-{{ item }}@\\h \\W]\\$ \"'"
     marker: "# {mark} ANSIBLE MANAGED BLOCK dlg shortcut {{item}}"
   with_items: "{{ groups['targets'] }}"
 
@@ -62,7 +62,7 @@
     path: .bashrc
     insertafter: BOF
     state: present
-    block: "alias revert-dlg='unset DOCKER_HOST=;unset DOCKER_TLS_VERIFY; export PS1=\"[{{ builder }}@\\h \\W]\\$ \"'"
+    block: "alias revert-dlg='unset DOCKER_HOST=;unset DOCKER_TLS_VERIFY; unset DOCKER_SWARM_MANAGER; PS1=\"$PSSAVE\"; unset PSSAVE'
     marker: "# {mark} ANSIBLE MANAGED BLOCK dlg shortcut revert dlg"
 
 - name: "install private key for ssh to target machines"
@@ -99,7 +99,7 @@
       command: ansible-playbook ~/site-builder/playbooks/undeploy-services.yml
     - name: dexec
       pre_command: |-
-        if [ -n DOCKER_SWARM_MANAGER ]; then
+        if [ -n "$DOCKER_SWARM_MANAGER" ]; then
           docker_command=$(docker service ps "$1" --format "{% raw %}{{ 'docker -H tcp://{{.Node}}:2376 exec -it {{.Name}}.{{.ID}}' }}{% endraw %}" --filter desired-state=running --no-trunc | head -1)
         else
           docker_command="docker exec -it $1"

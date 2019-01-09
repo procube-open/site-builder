@@ -4,18 +4,22 @@
   import_tasks: load-config-git.yml
   when: git is defined
 
-- name: copy config create dir
-  tags: copy-config
-  file:
-    dest: "~/config"
-    state: directory
-  when: git is not defined and site_root is not defined
-
 - name: copy config
   tags: copy-config
-  copy:
-    src: "../../site-builder/../"
+  synchronize:
+    src: "../../../.."
     dest: "~/config"
+  when: git is not defined and site_root is not defined
+
+- name: change owner of config
+  tags: copy-config
+  become: True
+  become_user: root
+  file:
+    path: "/home/{{ builder }}/config"
+    recurse: True
+    owner: "{{ builder }}"
+    group: "{{ builder_group }}"
   when: git is not defined and site_root is not defined
 
 - name: link config
