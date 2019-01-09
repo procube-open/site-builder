@@ -29,13 +29,13 @@ if [ -r $backup_file ]; then
   {% if backup_script.restore_command is defined %}
     {% if backup_script.restore_file is defined %}
   docker cp -L $backup_file $container_name:{{ backup_script.restore_file }}
-  if docker exec $container_name sh -l -c '{{ backup_script.restore_command }}'  ; then
+  if docker exec $container_name sh -c '{{ backup_script.restore_command }}'  ; then
     {% else %}
-  if docker exec -i $container_name sh -l -c '{{ backup_script.restore_command }}'  < $backup_file; then
+  if docker exec -i $container_name sh -c '{{ backup_script.restore_command }}'  < $backup_file; then
     {% endif %}
   {% elif backup_script.directory is defined %}
   docker cp -L $backup_file {{ backup_script.container }}:/tmp/restore.tar.gz
-  if docker exec $container_name sh -l -c 'cd {{backup_script.directory}}; rm -rf $(find . -maxdepth 1 | grep -v '^.$'); tar xzf /tmp/restore.tar.gz'; then
+  if docker exec $container_name sh -c 'cd {{backup_script.directory}}; rm -rf $(find . -maxdepth 1 | grep -v '^.$'); tar xzf /tmp/restore.tar.gz'; then
   {% endif %}
     message "END restore for {{ backup_script.name }}"
   else

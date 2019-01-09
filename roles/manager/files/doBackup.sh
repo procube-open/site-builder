@@ -25,7 +25,7 @@ message "ENTER CONTANER $container_name@$DOCKER_HOST"
 {% if backup_script.batch_scripts is defined %}
   {% for batch_script in backup_script.batch_scripts %}
 message "START batch: {{ batch_script }}"
-if docker exec $container_name sh -l -c '{{ batch_script }}' 1>&2 ; then
+if docker exec $container_name sh -c '{{ batch_script }}' 1>&2 ; then
   message "END batch: {{ batch_script }}"
 else
   message "FAIL batch: {{ batch_script }}"
@@ -38,13 +38,13 @@ backup_file="backup-{{ backup_script.name }}-$(date +%Y%m%d%H%M%S).{{ backup_scr
 message "START backup {{ backup_script.name }} into $backup_file"
   {% if backup_script.backup_command is defined %}
     {% if backup_script.backup_file is defined %}
-if docker exec $container_name sh -l -c '{{ backup_script.backup_command }}' 1>&2 ; then
+if docker exec $container_name sh -c '{{ backup_script.backup_command }}' 1>&2 ; then
   docker cp $container_name:{{ backup_script.backup_file }} $backup_file
     {% else %}
-if docker exec $container_name sh -l -c '{{ backup_script.backup_command }}' > "$backup_file"; then
+if docker exec $container_name sh -c '{{ backup_script.backup_command }}' > "$backup_file"; then
     {% endif %}
   {% elif backup_script.directory is defined %}
-if docker exec $container_name sh -l -c 'cd {{backup_script.directory}}; tar czf - $(find . -maxdepth 1 | grep -v '^.$')' > "$backup_file"; then
+if docker exec $container_name sh -c 'cd {{backup_script.directory}}; tar czf - $(find . -maxdepth 1 | grep -v '^.$')' > "$backup_file"; then
   {% endif %}
   message "END backup for {{ backup_script.name }} from $backup_file"
   message "LINK backup-{{ backup_script.name }}-latest.{{ backup_script.ext | default('tar.gz')}} to $backup_file"
