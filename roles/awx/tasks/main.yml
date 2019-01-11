@@ -1,7 +1,7 @@
 ---
 - name: "setup awx - create dir"
   file:
-    path: "awx"
+    path: "~/awx"
     state: directory
     mode: 0755
 
@@ -20,9 +20,9 @@
 
 - name: compose up awx container
   docker_service:
-    project_src: "awx"
+    project_src: "~/awx"
     docker_host: "tcp://{{ inventory_hostname }}:2376"
     tls: yes
-    cacert_path: ".docker/ca.pem"
-    cert_path: ".docker/cert.pem"
-    key_path:  ".docker/key.pem"
+    cacert_path: "/home/{{ builder }}/.docker/ca.pem"
+    cert_path: "/home/{{ builder }}/.docker/cert.pem"
+    key_path:  "/home/{{ builder }}/.docker/key.pem"

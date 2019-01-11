@@ -35,19 +35,19 @@
   delegate_to: "{{ manager_host }}"
   become_user: "{{ hostvars[manager_host].builder }}"
   shell: |
-    openssl x509 -req -days "{{ target_valid_in }}" -sha256 -in cawork/{{ tls_hostname }}.csr \
-    -CA  cawork/cacert.pem \
-    -CAkey cawork/cakey.pem \
-    -CAcreateserial -out cawork/{{ tls_hostname }}_cert.pem \
-    -extfile cawork/{{ tls_hostname }}-extfile.cnf
+    openssl x509 -req -days "{{ target_valid_in }}" -sha256 -in ~/cawork/{{ tls_hostname }}.csr \
+    -CA  ~/cawork/cacert.pem \
+    -CAkey ~/cawork/cakey.pem \
+    -CAcreateserial -out ~/cawork/{{ tls_hostname }}_cert.pem \
+    -extfile ~/cawork/{{ tls_hostname }}-extfile.cnf
   args:
-    creates: "cawork/{{ tls_hostname }}_cert.pem"
+    creates: "~/cawork/{{ tls_hostname }}_cert.pem"
 - name: fetch cert file into local
   delegate_to: "{{ manager_host }}"
   become_user: "{{ hostvars[manager_host].builder }}"
   tags: signed
   fetch:
-    src: "cawork/{{ tls_hostname }}_cert.pem"
+    src: "~/cawork/{{ tls_hostname }}_cert.pem"
     fail_on_missing: yes
     flat: yes
     dest: "/var/tmp/mother/certs/{{ tls_hostname }}_cert.pem"

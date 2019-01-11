@@ -1,7 +1,7 @@
 ---
 - name: create work directory for extra attribute file, csr
   file:
-    path: "cawork"
+    path: "~/cawork"
     state: directory
     mode: 0775
 - name: setup extra attribute file
@@ -12,22 +12,22 @@
   shell: |
     openssl req -batch -new -newkey rsa:4096 -nodes -sha256 \
       -subj '/E={{ ca_EMail }}/C={{ ca_C }}/ST={{ ca_ST }}/L={{ ca_L }}/O={{ ca_O }}/OU={{ ca_OU }}/CN={{ ca_CN }}' \
-      -keyout cawork/cakey.pem \
-      -out cawork/ca-ca.csr
+      -keyout ~/cawork/cakey.pem \
+      -out ~/cawork/ca-ca.csr
   args:
-    creates: cawork/ca-ca.csr
+    creates: ~/cawork/ca-ca.csr
 - name: CA certificate
   shell: |
-    openssl x509 -req  -days "{{ ca_valid_in }}" -sha256 -in cawork/ca-ca.csr \
-      -signkey cawork/cakey.pem \
-      -out cawork/cacert.pem \
-      -extfile cawork/extfile-ca.cnf
+    openssl x509 -req  -days "{{ ca_valid_in }}" -sha256 -in ~/cawork/ca-ca.csr \
+      -signkey ~/cawork/cakey.pem \
+      -out ~/cawork/cacert.pem \
+      -extfile ~/cawork/extfile-ca.cnf
   args:
-    creates: "cawork/cacert.pem"
+    creates: "~/cawork/cacert.pem"
 - name: fetch cert file into local
   tags: signed
   fetch:
-    src:  cawork/cacert.pem
+    src:  ~/cawork/cacert.pem
     fail_on_missing: yes
     flat: yes
     dest: /var/tmp/mother/cacert.pem
