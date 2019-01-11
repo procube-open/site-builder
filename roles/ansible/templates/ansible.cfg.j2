@@ -1,5 +1,5 @@
 [defaults]
-inventory={{ site_root | default("~/config") }}/hosts
+inventory={{ site_root | default("~/config") }}/{{ site_inventory_name | default("hosts") }}
 roles_path={{ site_root | default("~/config") }}/roles:{{ site_root | default("~") }}/site-builder/roles
 forks=15
 pipelining = True
