@@ -55,6 +55,10 @@ else
 fi
 {% endif %}
 message "LEAVE CONTANER $container_name@$DOCKER_HOST"
+{% if backup_script.cleanup_days_before is defined %}
+message "Clean up old files than {{ backup_script.cleanup_days_before }} like backup-{{ backup_script.name }}-*.{{ backup_script.ext | default('tar.gz')}}"
+find ./ -name "backup-{{ backup_script.name }}-*.{{ backup_script.ext | default('tar.gz')}}" -mtime +{{ backup_script.cleanup_days_before }} -type f | xargs rm -f
+{% endif %}
 {% if backup_script.service is defined %}
 fi
 {% endif %}
