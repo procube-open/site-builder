@@ -1,7 +1,7 @@
 ---
 - name: "setup bakckup directory"
   file:
-    path: "backup"
+    path: "~/backup"
     state: directory
     mode: 0755
 - name: add backup script

@@ -1,7 +1,7 @@
 ---
 - name: "setup registry - create dir"
   file:
-    path: "registry"
+    path: "~/registry"
     state: directory
     mode: 0755
 
@@ -11,9 +11,9 @@
     name: httpd-tools
     state: present
 - name: make htpasswd file
-  shell: "htpasswd -cBb 'registry/htpasswd' '{{ docker_login_user }}' '{{ registry_password }}'"
+  shell: "htpasswd -cBb $HOME/registry/htpasswd '{{ docker_login_user }}' '{{ registry_password }}'"
   args:
-    creates: "registry/htpasswd"
+    creates: "~/registry/htpasswd"
 
 - name: "install registry docker-compose.yml"
   template:
@@ -37,10 +37,10 @@
 
 - name: compose up registry container
   docker_service:
-    project_src: "registry"
+    project_src: "~/registry"
     docker_host: "tcp://{{ inventory_hostname }}:2376"
     tls: yes
     ssl_version: "TLSv1_2"
-    cacert_path: ".docker/ca.pem"
-    cert_path: ".docker/cert.pem"
-    key_path:  ".docker/key.pem"
+    cacert_path: "/home/{{ builder }}/.docker/ca.pem"
+    cert_path: "/home/{{ builder }}/.docker/cert.pem"
+    key_path:  "/home/{{ builder }}/.docker/key.pem"

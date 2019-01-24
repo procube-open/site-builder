@@ -1,7 +1,7 @@
 ---
 - name: "setup tls connection - create dir"
   file:
-    path: ".docker"
+    path: "~/.docker"
     state: directory
     mode: 0700
 - name: "setup tls connection - put certs"
@@ -20,7 +20,7 @@
 - name: "install playbooks - create directory"
   become_user: "{{ builder }}"
   file:
-    path: "site-builder/playbooks"
+    path: "~/site-builder/playbooks"
     state: directory
     mode: 0755
 
@@ -41,7 +41,7 @@
 - name: "setup docker connection - create dir"
   become_user: "{{ builder }}"
   file:
-    path: "hosts.d/{{ item }}"
+    path: "~/hosts.d/{{ item }}"
     state: directory
     mode: 0755
   with_items: "{{ groups['targets'] }}"
@@ -49,20 +49,20 @@
 - name: "setup docker connection - shortcut alias"
   become_user: "{{ builder }}"
   blockinfile:
-    path: .bashrc
+    path: ~/.bashrc
     insertafter: BOF
     state: present
-    block: "alias dlg-{{ item }}='export DOCKER_SWARM_MANAGER={{ hostvars[item].swarm_master | default('') }};export DOCKER_HOST=tcp://{{ item }}:2376;export DOCKER_TLS_VERIFY=1; export PS1=\"[dlg-{{ item }}@\\h \\W]\\$ \"'"
+    block: "alias dlg-{{ item }}='export DOCKER_SWARM_MANAGER={{ hostvars[item].swarm_master | default('') }};export DOCKER_HOST=tcp://{{ item }}:2376;export DOCKER_TLS_VERIFY=1; PSSAVE=${PSSAVE:-$PS1}; PS1=\"[dlg-{{ item }}@\\h \\W]\\$ \"'"
     marker: "# {mark} ANSIBLE MANAGED BLOCK dlg shortcut {{item}}"
   with_items: "{{ groups['targets'] }}"
 
 - name: "setup docker connection - shortcut revert"
   become_user: "{{ builder }}"
   blockinfile:
-    path: .bashrc
+    path: ~/.bashrc
     insertafter: BOF
     state: present
-    block: "alias revert-dlg='unset DOCKER_HOST=;unset DOCKER_TLS_VERIFY; export PS1=\"[{{ builder }}@\\h \\W]\\$ \"'"
+    block: "alias revert-dlg='unset DOCKER_HOST;unset DOCKER_TLS_VERIFY; unset DOCKER_SWARM_MANAGER; PS1=\"$PSSAVE\"; unset PSSAVE'"
     marker: "# {mark} ANSIBLE MANAGED BLOCK dlg shortcut revert dlg"
 
 - name: "install private key for ssh to target machines"
@@ -76,7 +76,7 @@
 - name: "Setup commands"
   become_user: "{{ builder }}"
   blockinfile:
-    dest: .bashrc
+    dest: ~/.bashrc
     insertafter: BOF
     state: present
     block: |

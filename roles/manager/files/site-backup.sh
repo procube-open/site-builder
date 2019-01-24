@@ -1,6 +1,5 @@
 #!/bin/bash
 HOSTSDIR=hosts.d
-BACKUPDIR=backups.d
 BASEDIR=$(pwd)
 LOGGER=${0##*/}
 
