@@ -8,7 +8,8 @@
     region: "{{ region }}"
     subnets:
 {{ subnets | to_nice_yaml | indent(6, true) }}
-
+    gcp_vpcs:
+{{ gcp_vpcs.results | to_nice_yaml | indent(6, true) }}
 {% raw %}
   tasks:
   - name: delete global ip
@@ -30,6 +31,8 @@
       name: "{{ item.key }}"
       project: "{{ project }}"
       region: "{{ region }}"
+      network: "{{ (gcp_vpcs | selectattr('item.key','equalto', item.value.vpc) | list)[0] }}"
+      ip_cidr_range: "{{ item.value.cidr }}"
       state: absent
     with_dict: "{{ subnets }}"
   - name: Delete VPC
