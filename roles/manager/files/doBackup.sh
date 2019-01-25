@@ -44,7 +44,7 @@ if docker exec $container_name sh -c '{{ backup_script.backup_command }}' 1>&2 ;
 if docker exec $container_name sh -c '{{ backup_script.backup_command }}' > "$backup_file"; then
     {% endif %}
   {% elif backup_script.directory is defined %}
-if docker exec $container_name sh -c 'cd {{backup_script.directory}}; tar czf - $(find . -maxdepth 1 | grep -v '^.$')' > "$backup_file"; then
+if docker exec $container_name sh -c 'cd {{backup_script.directory}}; tar czf - $(find . -maxdepth 1 -not -name .)' > "$backup_file"; then
   {% endif %}
   message "END backup for {{ backup_script.name }} from $backup_file"
   message "LINK backup-{{ backup_script.name }}-latest.{{ backup_script.ext | default('tar.gz')}} to $backup_file"
@@ -55,6 +55,10 @@ else
 fi
 {% endif %}
 message "LEAVE CONTANER $container_name@$DOCKER_HOST"
+{% if backup_script.cleanup_days_before is defined %}
+message "Clean up old files than {{ backup_script.cleanup_days_before }} like backup-{{ backup_script.name }}-*.{{ backup_script.ext | default('tar.gz')}}"
+find ./ -name "backup-{{ backup_script.name }}-*.{{ backup_script.ext | default('tar.gz')}}" -mtime +{{ backup_script.cleanup_days_before }} -type f | xargs rm -f
+{% endif %}
 {% if backup_script.service is defined %}
 fi
 {% endif %}

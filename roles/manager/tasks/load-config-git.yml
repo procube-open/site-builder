@@ -6,7 +6,7 @@
 - name: "install knownhosts for git ssh"
   blockinfile:
     block: "{{ git.host }}"
-    path: ".ssh/known_hosts"
+    path: "~/.ssh/known_hosts"
     marker: "# {mark} ANSIBLE MANAGED BLOCK git ssh server"
     mode: 0600
     create: True
@@ -20,7 +20,7 @@
 - name: set .ssh/config for git
   become_user: "{{ builder }}"
   blockinfile:
-    path: ".ssh/config"
+    path: "~/.ssh/config"
     marker: "# {mark} ANSIBLE MANAGED BLOCK git {{ git.fqdn }}"
     insertafter: BOF
     state: present
