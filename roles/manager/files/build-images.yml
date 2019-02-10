@@ -23,7 +23,8 @@
     connection: local
     set_fact:
       ansible_connection: docker
-      image_tag: "{{registry}}/{{project_name}}/{{ inventory_hostname }}:{{ image_tag | default('latest')}}"
+      image_tag: "{{registry}}/{{project_name}}/{{ inventory_hostname }}:{{ lookup('pipe', 'date +\"%Y%m%d%H%M%S\"') }}"
+      image_tag_latest: "{{registry}}/{{project_name}}/{{ inventory_hostname }}:latest"
       ansible_host: "build_image_{{ inventory_hostname }}"
 
   - name: remove previous from-image
@@ -107,6 +108,7 @@
       docker stop "build_image_{{ inventory_hostname }}"
       docker rmi -f "{{ image_tag }}"
       docker commit {{ reset_build_overrides }} "build_image_{{ inventory_hostname }}"  "{{ image_tag }}"
+      docker tag "{{ image_tag }}" "{{ image_tag_latest }}"
       docker rm "build_image_{{ inventory_hostname }}"
 
   - name: push image
@@ -114,3 +116,4 @@
     connection: local
     shell: |
       docker push "{{ image_tag }}"
+      docker push "{{ image_tag_latest }}"
