@@ -6,9 +6,11 @@
   tags: reboot
   changed_when: false
   listen: require reboot
+  when: not ((skip_reboot | default(False)) or check_mode)
+  register: reboot
 - name: wait for connectable
   wait_for_connection:
     delay: 30
   tags: reboot
   listen: require reboot
-  when: reboot_command is not defined
+  when: reboot is not skipped and reboot_command is not defined

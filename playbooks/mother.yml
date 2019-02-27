@@ -17,4 +17,3 @@
       become_user: "{{ administrator }}"
       when: cloud_platform is defined
     - role: reboot
-      when: not (skip_reboot | default(False))

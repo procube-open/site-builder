@@ -6,6 +6,7 @@
     dest: /root/
 - name: gather rpm file list
   shell: ls -1 /root/RPMS/*/*.rpm
+  check_mode: False
   changed_when: False
   register: rpms
 - name: install packages

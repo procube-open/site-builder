@@ -29,6 +29,7 @@
   shell: "~/{{ item }}/bin/pip show pip | awk '/^Version/{print $2}'"
   register: pip_version
   changed_when: False
+  check_mode: False
   with_items: "{{ safe_venvs }}"
 - name: "upgrade pip in virtual env {{ safe_venvs }}"
   shell: "~/{{ item }}/bin/pip install --upgrade pip setuptools"

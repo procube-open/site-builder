@@ -29,10 +29,11 @@
     regexp: "^PermitRootLogin"
     insertafter: "^#PermitRootLogin"
     line: "PermitRootLogin no"
-- name: gather ssh host keys
-  shell: cat /etc/ssh/ssh_host_ecdsa_key.pub
-  changed_when: False
-  register: ssh_host_key
+# - name: gather ssh host keys
+#   shell: cat /etc/ssh/ssh_host_ecdsa_key.pub
+#   changed_when: False
+#   check_mode: False
+#   register: ssh_host_key
 # - name: generate known_hosts for all users
 #   include_tasks: known-hosts.yml
 #   with_dict: "{{users}}"

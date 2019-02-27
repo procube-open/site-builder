@@ -14,10 +14,12 @@
   - name: login for gcloud cli
     shell: "gcloud auth activate-service-account {{ account }} --key-file=$HOME/.gcp_credentials.json"
     changed_when: False
+    check_mode: False
     when: safe_target_state != 'absent'
   - name: gather facts
     shell: "gcloud compute instances describe {{ item }} --project={{ project }} --zone={{ zone }} | grep ^status: | cut -d ' ' -f 2"
     changed_when: False
+    check_mode: False
     when: safe_target_state != 'absent'
     with_items: "{{ targets }}"
     register: instance_status

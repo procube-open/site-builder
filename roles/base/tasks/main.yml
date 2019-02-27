@@ -49,6 +49,7 @@
   when: timezone is defined
 - name: "gather available locales"
   shell: localectl list-locales
+  check_mode: False
   register: locales
   changed_when: False
 - name: "set locale"

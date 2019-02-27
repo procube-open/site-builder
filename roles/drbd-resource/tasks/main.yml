@@ -15,6 +15,7 @@
 - name: gather if drbd metadata exists or not
   shell: "drbdadm dstate {{ item.name }}"
   changed_when: False
+  check_mode: False
   failed_when: False
   register: dstate
   with_items: "{{ drbd_resource.resources }}"
@@ -25,6 +26,7 @@
 - name: gather drbd resource status
   shell: "drbdadm adjust -d {{ item.name }}"
   changed_when: False
+  check_mode: False
   with_items: "{{ drbd_resource.resources }}"
   register: adjust
 - name: adjust drbd resource
@@ -35,6 +37,7 @@
   shell: 'blkid | grep ''^{{ item.device }}:.* TYPE="{{ item.fstype }}"'''
   with_items: "{{ drbd_resource.resources }}"
   changed_when: False
+  check_mode: False
   failed_when: False
   register: formated
   when: item.primary_node == inventory_hostname
