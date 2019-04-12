@@ -6,7 +6,7 @@
   tags: reboot
   changed_when: false
   listen: require reboot
-  when: not ((skip_reboot | default(False)) or check_mode)
+  when: not ((skip_reboot | default(False)) or ansible_check_mode)
   register: reboot
 - name: wait for connectable
   wait_for_connection:
